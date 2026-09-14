@@ -433,9 +433,18 @@
       .chart-point-active { stroke-width: 4; }
       .chart-hit-area { fill: transparent; cursor: pointer; outline: none; }
       .chart-hit-area:focus { stroke: rgba(9, 105, 218, 0.35); stroke-width: 8; }
+      .chart-crosshair {
+        stroke: var(--muted);
+        stroke-width: 1;
+        stroke-dasharray: 3 3;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .chart-crosshair-active { opacity: 1; }
       .movement-zero-line { stroke: var(--text); stroke-width: 1.5; }
       .movement-bar { cursor: pointer; }
       .movement-bar:focus { stroke: var(--blue); stroke-width: 3; outline: none; }
+      .movement-bar-active { filter: brightness(0.9); }
       .movement-legend-label { fill: var(--muted); font-size: 11px; font-weight: 600; }
       .growth-goal-line {
         fill: none;
@@ -1612,6 +1621,12 @@
         }));
       }
 
+      // Base total e perda mensal têm escalas muito diferentes (centenas de
+      // milhares x milhares), então em vez de um único eixo duplo (a leitura
+      // de "perda" ficava distorcida ao dividir a área com a base), o
+      // gráfico usa duas faixas verticais com eixo próprio cada uma, dentro
+      // do mesmo SVG — o que mantém as duas alinhadas pelo mesmo mês e sob
+      // um único cursor de hover, sem misturar as duas escalas numa área só.
       function renderDashboardGeneralTrendChart(points) {
         const chart = document.getElementById('dashboard-trend-chart');
         const periodLabel = document.getElementById('dashboard-trend-period');
@@ -1622,10 +1637,21 @@
         }
 
         const width = 1120;
-        const height = 410;
-        const margin = { top: 68, right: 82, bottom: 52, left: 92 };
-        const plotWidth = width - margin.left - margin.right;
-        const plotHeight = height - margin.top - margin.bottom;
+        const marginLeft = 92;
+        const marginRight = 24;
+        const plotWidth = width - marginLeft - marginRight;
+
+        const topPlotTop = 30;
+        const topPlotHeight = 190;
+        const topPlotBottom = topPlotTop + topPlotHeight;
+
+        const bottomPlotTop = topPlotBottom + 40;
+        const bottomPlotHeight = 110;
+        const bottomPlotBottom = bottomPlotTop + bottomPlotHeight;
+
+        const axisLabelY = bottomPlotBottom + 30;
+        const height = axisLabelY + 14;
+
         const baseValues = points.map((point) => point.base);
         const baseMinimum = Math.min(...baseValues);
         const baseMaximum = Math.max(...baseValues);
@@ -1634,14 +1660,14 @@
         const baseAxisMinimum = Math.max(0, baseMinimum - basePadding);
         const baseAxisMaximum = baseMaximum + basePadding;
         const lossAxisMaximum = niceChartMaximum(Math.max(...points.map((point) => point.loss), 1));
-        const xForIndex = (index) => margin.left + (
+        const xForIndex = (index) => marginLeft + (
           points.length === 1 ? plotWidth / 2 : index / (points.length - 1) * plotWidth
         );
-        const yForBase = (value) => margin.top + (
+        const yForBase = (value) => topPlotTop + (
           (baseAxisMaximum - value) / Math.max(baseAxisMaximum - baseAxisMinimum, 1)
-        ) * plotHeight;
-        const yForLoss = (value) => margin.top + (1 - value / lossAxisMaximum) * plotHeight;
-        const barWidth = Math.min(48, plotWidth / Math.max(points.length * 2.4, 1));
+        ) * topPlotHeight;
+        const yForLoss = (value) => bottomPlotTop + (1 - value / lossAxisMaximum) * bottomPlotHeight;
+        const barWidth = Math.min(40, plotWidth / Math.max(points.length * 2.4, 1));
         const svg = createSvgElement('svg', {
           class: 'dashboard-trend-svg',
           viewBox: `0 0 ${width} ${height}`,
@@ -1652,49 +1678,46 @@
         tooltip.className = 'chart-tooltip hidden';
 
         appendDashboardChartGradients(svg);
-        appendDashboardChartAxes(
-          svg,
-          points,
-          margin,
-          plotWidth,
-          plotHeight,
-          baseAxisMinimum,
-          baseAxisMaximum,
-          lossAxisMaximum,
-          xForIndex
-        );
+        appendDashboardBaseAxis(svg, marginLeft, plotWidth, topPlotTop, topPlotHeight, baseAxisMinimum, baseAxisMaximum);
+        appendDashboardLossAxis(svg, marginLeft, plotWidth, bottomPlotTop, bottomPlotHeight, lossAxisMaximum);
+        appendDashboardMonthAxis(svg, points, marginLeft, plotWidth, axisLabelY, xForIndex);
 
         const baseCoordinates = points.map((point, index) => ({
           x: xForIndex(index),
           y: yForBase(point.base),
         }));
         const areaPath = [
-          `M ${baseCoordinates[0].x} ${margin.top + plotHeight}`,
+          `M ${baseCoordinates[0].x} ${topPlotBottom}`,
           ...baseCoordinates.map((coordinate) => `L ${coordinate.x} ${coordinate.y}`),
-          `L ${baseCoordinates[baseCoordinates.length - 1].x} ${margin.top + plotHeight}`,
+          `L ${baseCoordinates[baseCoordinates.length - 1].x} ${topPlotBottom}`,
           'Z',
         ].join(' ');
         svg.appendChild(createSvgElement('path', { class: 'dashboard-base-area', d: areaPath }));
 
         // Mesmo critério do gráfico de cidade: com muitos meses, evita rótulo
         // numérico em cada barra/ponto (que se sobrepõem) e mostra só nas
-        // extremidades, deixando o tooltip cobrir o restante.
+        // extremidades e no mês de maior perda, deixando o tooltip cobrir o
+        // restante.
         const showAllLabels = points.length <= 8;
+        const maxLossIndex = points.reduce((best, point, index) => (
+          point.loss > points[best].loss ? index : best
+        ), 0);
 
         const bars = points.map((point, index) => {
           const x = xForIndex(index);
           const y = yForLoss(point.loss);
           const isEdge = index === 0 || index === points.length - 1;
+          const isNotable = showAllLabels || isEdge || index === maxLossIndex;
           const bar = createSvgElement('rect', {
             class: 'dashboard-loss-bar',
             x: x - barWidth / 2,
             y,
             width: barWidth,
-            height: Math.max(margin.top + plotHeight - y, 0),
+            height: Math.max(bottomPlotBottom - y, 0),
             rx: 4,
           });
           svg.appendChild(bar);
-          if (point.loss > 0 && (showAllLabels || isEdge)) {
+          if (point.loss > 0 && isNotable) {
             const label = createSvgElement('text', {
               class: 'chart-value-label dashboard-loss-label',
               x,
@@ -1711,6 +1734,18 @@
           class: 'dashboard-base-line',
           points: baseCoordinates.map((coordinate) => `${coordinate.x},${coordinate.y}`).join(' '),
         }));
+
+        // Cursor único: uma linha vertical que atravessa as duas faixas,
+        // para o hover em qualquer uma delas deixar claro que é o mesmo mês
+        // nos dois gráficos.
+        const crosshair = createSvgElement('line', {
+          class: 'chart-crosshair',
+          x1: marginLeft,
+          x2: marginLeft,
+          y1: topPlotTop,
+          y2: bottomPlotBottom,
+        });
+        svg.appendChild(crosshair);
 
         points.forEach((point, index) => {
           const coordinate = baseCoordinates[index];
@@ -1738,9 +1773,9 @@
           const hitArea = createSvgElement('rect', {
             class: 'dashboard-chart-hit-area',
             x: coordinate.x - hitWidth / 2,
-            y: margin.top,
+            y: 0,
             width: hitWidth,
-            height: plotHeight,
+            height,
             tabindex: 0,
             role: 'button',
             'aria-label': `${point.label}, base ${formatInteger(point.base)}, perda ${formatInteger(point.loss)}`,
@@ -1751,9 +1786,11 @@
             event.currentTarget,
             circle,
             bars[index],
-            point
+            point,
+            crosshair,
+            coordinate.x
           );
-          const hideTooltip = () => hideDashboardTrendTooltip(tooltip, circle, bars[index]);
+          const hideTooltip = () => hideDashboardTrendTooltip(tooltip, circle, bars[index], crosshair);
           hitArea.addEventListener('pointerenter', showTooltip);
           hitArea.addEventListener('pointerleave', hideTooltip);
           hitArea.addEventListener('focus', showTooltip);
@@ -1850,34 +1887,56 @@
         svg.appendChild(definitions);
       }
 
-      function appendDashboardChartAxes(
-        svg,
-        points,
-        margin,
-        plotWidth,
-        plotHeight,
-        baseMinimum,
-        baseMaximum,
-        lossMaximum,
-        xForIndex
-      ) {
-        const gridLines = 4;
+      function appendDashboardBaseAxis(svg, marginLeft, plotWidth, plotTop, plotHeight, baseMinimum, baseMaximum) {
+        const gridLines = 3;
         for (let index = 0; index <= gridLines; index += 1) {
           const ratio = index / gridLines;
-          const y = margin.top + ratio * plotHeight;
-          const baseValue = baseMaximum - ratio * (baseMaximum - baseMinimum);
-          const lossValue = lossMaximum - ratio * lossMaximum;
+          const y = plotTop + ratio * plotHeight;
+          const value = baseMaximum - ratio * (baseMaximum - baseMinimum);
           svg.appendChild(createSvgElement('line', {
             class: 'chart-grid-line',
-            x1: margin.left,
-            x2: margin.left + plotWidth,
+            x1: marginLeft,
+            x2: marginLeft + plotWidth,
             y1: y,
             y2: y,
           }));
-          appendDashboardAxisLabel(svg, margin.left - 10, y + 4, formatInteger(Math.round(baseValue)), 'end');
-          appendDashboardAxisLabel(svg, margin.left + plotWidth + 10, y + 4, formatInteger(Math.round(lossValue)), 'start');
+          appendDashboardAxisLabel(svg, marginLeft - 10, y + 4, formatInteger(Math.round(value)), 'end');
         }
 
+        const title = createSvgElement('text', {
+          class: 'chart-axis-title',
+          x: marginLeft,
+          y: plotTop - 12,
+          'text-anchor': 'start',
+        });
+        title.textContent = 'Base total';
+        svg.appendChild(title);
+      }
+
+      function appendDashboardLossAxis(svg, marginLeft, plotWidth, plotTop, plotHeight, lossMaximum) {
+        [0, lossMaximum].forEach((value) => {
+          const y = plotTop + (1 - value / lossMaximum) * plotHeight;
+          svg.appendChild(createSvgElement('line', {
+            class: 'chart-grid-line',
+            x1: marginLeft,
+            x2: marginLeft + plotWidth,
+            y1: y,
+            y2: y,
+          }));
+          appendDashboardAxisLabel(svg, marginLeft - 10, y + 4, formatInteger(Math.round(value)), 'end');
+        });
+
+        const title = createSvgElement('text', {
+          class: 'chart-axis-title',
+          x: marginLeft,
+          y: plotTop - 12,
+          'text-anchor': 'start',
+        });
+        title.textContent = 'Perda no mês';
+        svg.appendChild(title);
+      }
+
+      function appendDashboardMonthAxis(svg, points, marginLeft, plotWidth, axisLabelY, xForIndex) {
         // Mesmo critério de espaçamento usado no gráfico de evolução por
         // cidade: com muitos meses, mostra só ~7 rótulos (sempre incluindo o
         // primeiro e o último) em vez de lotar o eixo.
@@ -1885,25 +1944,8 @@
         points.forEach((point, index) => {
           const isEdge = index === 0 || index === points.length - 1;
           if (!isEdge && index % labelStep !== 0) return;
-          appendDashboardAxisLabel(svg, xForIndex(index), margin.top + plotHeight + 28, formatMonthShort(point.monthKey), 'middle');
+          appendDashboardAxisLabel(svg, xForIndex(index), axisLabelY, formatMonthShort(point.monthKey), 'middle');
         });
-
-        const leftTitle = createSvgElement('text', {
-          class: 'chart-axis-title',
-          x: margin.left,
-          y: 27,
-          'text-anchor': 'start',
-        });
-        leftTitle.textContent = 'Base total';
-        svg.appendChild(leftTitle);
-        const rightTitle = createSvgElement('text', {
-          class: 'chart-axis-title',
-          x: margin.left + plotWidth,
-          y: 27,
-          'text-anchor': 'end',
-        });
-        rightTitle.textContent = 'Perda no mês';
-        svg.appendChild(rightTitle);
       }
 
       function appendDashboardAxisLabel(svg, x, y, value, anchor) {
@@ -1925,7 +1967,7 @@
         return factor * magnitude;
       }
 
-      function showDashboardTrendTooltip(chart, tooltip, target, circle, bar, point) {
+      function showDashboardTrendTooltip(chart, tooltip, target, circle, bar, point, crosshair, crosshairX) {
         const title = document.createElement('strong');
         title.className = 'chart-tooltip-title';
         title.textContent = point.label;
@@ -1945,11 +1987,18 @@
         tooltip.classList.remove('hidden');
         circle.classList.add('dashboard-base-point-active');
         bar.classList.add('dashboard-loss-bar-active');
+        crosshair.setAttribute('x1', crosshairX);
+        crosshair.setAttribute('x2', crosshairX);
+        crosshair.classList.add('chart-crosshair-active');
 
+        // A posição Y da dica acompanha o ponto da base (não a área de hover
+        // inteira, que agora cobre as duas faixas do gráfico) — assim ela
+        // sempre aparece perto da linha, não colada no topo do gráfico.
         const chartRect = chart.getBoundingClientRect();
         const targetRect = target.getBoundingClientRect();
+        const circleRect = circle.getBoundingClientRect();
         const pointX = targetRect.left + targetRect.width / 2 - chartRect.left + chart.scrollLeft;
-        const pointY = targetRect.top - chartRect.top + chart.scrollTop;
+        const pointY = circleRect.top - chartRect.top + chart.scrollTop;
         const minimumX = chart.scrollLeft + 105;
         const maximumX = chart.scrollLeft + chart.clientWidth - 105;
         tooltip.style.left = `${Math.min(Math.max(pointX, minimumX), maximumX)}px`;
@@ -1957,11 +2006,12 @@
         tooltip.classList.add('chart-tooltip-below');
       }
 
-      function hideDashboardTrendTooltip(tooltip, circle, bar) {
+      function hideDashboardTrendTooltip(tooltip, circle, bar, crosshair) {
         tooltip.classList.add('hidden');
         tooltip.classList.remove('chart-tooltip-below');
         circle.classList.remove('dashboard-base-point-active');
         bar.classList.remove('dashboard-loss-bar-active');
+        crosshair.classList.remove('chart-crosshair-active');
       }
 
       function renderRepresentationNote(summary) {
@@ -2722,8 +2772,15 @@
         if (goalPath) {
           svg.appendChild(createSvgElement('path', { class: 'growth-goal-line', d: goalPath }));
         }
+        // Só os extremos da meta ganham rótulo direto (igual às barras de
+        // crescimento, que já mostram todo valor) — o resto fica no hover,
+        // pra não competir com os números das barras em cada mês.
+        const goalIndexes = movements
+          .map((change, index) => (Number.isFinite(change.growthGoal) ? index : -1))
+          .filter((index) => index >= 0);
+        const goalEdgeIndexes = new Set([goalIndexes[0], goalIndexes[goalIndexes.length - 1]]);
 
-        const barWidth = Math.min(48, xStep * 0.52);
+        const barWidth = Math.min(24, xStep * 0.52);
         movements.forEach((change, index) => {
           const x = xForIndex(index);
           const valueY = yForDifference(change.difference);
@@ -2736,7 +2793,7 @@
             y: barY,
             width: barWidth,
             height: barHeight,
-            rx: 5,
+            rx: 4,
             fill: isPositive
               ? 'url(#movement-positive-gradient)'
               : 'url(#movement-negative-gradient)',
@@ -2744,16 +2801,18 @@
             role: 'button',
             'aria-label': `${change.currentLabel}, crescimento ${formatSignedInteger(change.difference)}, meta ${formatGoalValue(change.growthGoal)}`,
           });
-          const showTooltip = (event) => showMovementChartTooltip(
-            chart,
-            tooltip,
-            event.currentTarget,
-            change
-          );
+          const showTooltip = (event) => {
+            bar.classList.add('movement-bar-active');
+            showMovementChartTooltip(chart, tooltip, event.currentTarget, change);
+          };
+          const hideTooltip = () => {
+            bar.classList.remove('movement-bar-active');
+            tooltip.classList.add('hidden');
+          };
           bar.addEventListener('pointerenter', showTooltip);
-          bar.addEventListener('pointerleave', () => tooltip.classList.add('hidden'));
+          bar.addEventListener('pointerleave', hideTooltip);
           bar.addEventListener('focus', showTooltip);
-          bar.addEventListener('blur', () => tooltip.classList.add('hidden'));
+          bar.addEventListener('blur', hideTooltip);
           svg.appendChild(bar);
 
           const valueLabel = createSvgElement('text', {
@@ -2766,12 +2825,23 @@
           svg.appendChild(valueLabel);
 
           if (Number.isFinite(change.growthGoal)) {
+            const goalY = yForDifference(change.growthGoal);
             svg.appendChild(createSvgElement('circle', {
               class: 'growth-goal-point',
               cx: x,
-              cy: yForDifference(change.growthGoal),
+              cy: goalY,
               r: 4,
             }));
+            if (goalEdgeIndexes.has(index)) {
+              const goalLabel = createSvgElement('text', {
+                class: 'chart-value-label',
+                x,
+                y: goalY - 10,
+                'text-anchor': 'middle',
+              });
+              goalLabel.textContent = formatGoalValue(change.growthGoal);
+              svg.appendChild(goalLabel);
+            }
           }
 
           const monthLabel = createSvgElement('text', {
@@ -2969,6 +3039,17 @@
         });
         svg.appendChild(polyline);
 
+        // Rótulo em todo ponto virava uma parede de números com vários
+        // meses de histórico; agora só os extremos (primeiro, último, maior
+        // e menor valor) ganham número fixo — o resto aparece ao passar o
+        // mouse, igual ao restante dos gráficos do painel.
+        const maximumValuePoint = indexedPoints.reduce((best, point) => (
+          point.value > best.value ? point : best
+        ), indexedPoints[0]);
+        const minimumValuePoint = indexedPoints.reduce((best, point) => (
+          point.value < best.value ? point : best
+        ), indexedPoints[0]);
+
         indexedPoints.forEach((point) => {
           const x = xForIndex(point.index);
           const y = yForValue(point.value);
@@ -2984,14 +3065,19 @@
 
           const isFirstPoint = point.index === 0;
           const isLastPoint = point.index === points.length - 1;
-          const valueLabel = createSvgElement('text', {
-            class: 'chart-value-label',
-            x: isFirstPoint ? x + 7 : isLastPoint ? x - 7 : x,
-            y: y - 13,
-            'text-anchor': isFirstPoint ? 'start' : isLastPoint ? 'end' : 'middle',
-          });
-          valueLabel.textContent = formatInteger(point.value);
-          svg.appendChild(valueLabel);
+          const isNotable = isFirstPoint || isLastPoint
+            || point.index === maximumValuePoint.index
+            || point.index === minimumValuePoint.index;
+          if (isNotable) {
+            const valueLabel = createSvgElement('text', {
+              class: 'chart-value-label',
+              x: isFirstPoint ? x + 7 : isLastPoint ? x - 7 : x,
+              y: y - 13,
+              'text-anchor': isFirstPoint ? 'start' : isLastPoint ? 'end' : 'middle',
+            });
+            valueLabel.textContent = formatInteger(point.value);
+            svg.appendChild(valueLabel);
+          }
 
           const hitArea = createSvgElement('circle', {
             class: 'chart-hit-area',
