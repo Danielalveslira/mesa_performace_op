@@ -118,6 +118,24 @@ const PLANO_ACAO_CONFIG = Object.freeze({
       'pendencia_motivo', 'proximo_passo', 'links_evidencias', 'criado_por', 'criado_em',
       'atualizado_por', 'atualizado_em', 'versao', 'ativo',
     ]),
+    // Usado na listagem (getPlanoAcaoBootstrap/getAppBootstrap), que hoje
+    // carrega todos os planos acessíveis de uma vez: omite os campos de
+    // texto longo que só o formulário de edição e a tela de detalhe usam
+    // (como, pendencia_motivo, proximo_passo, links_evidencias — até
+    // 5000+2000+2000+20*2048 caracteres por plano) e que nunca são lidos a
+    // partir de um item da lista no cliente, apenas a partir de
+    // getPlanoAcaoDetail. Conferido em PlanoAcaoClient.html: o único ponto
+    // que pré-preenche o formulário de edição com esses campos
+    // (planoOpenForm) sempre recebe detail.plan, nunca um item de
+    // planoState.plans. Mantém todo o resto (inclusive campos hoje sem uso
+    // na UI, como base_anterior/diferenca/variacao_pct) para não quebrar
+    // nada que dependa deles no futuro sem motivo — só corta o que
+    // comprovadamente pesa mais e não é lido na lista.
+    PLAN_LIST: Object.freeze([
+      'id', 'cidade', 'regional', 'periodo_analisado', 'periodo_comparacao',
+      'base_atual', 'prioridade', 'o_que', 'responsavel', 'prazo', 'status',
+      'percentual_conclusao', 'criado_em', 'atualizado_em', 'versao', 'ativo',
+    ]),
     UPDATE: Object.freeze([
       'id', 'tipo', 'resumo', 'status', 'percentual_conclusao', 'pendencia_motivo',
       'proximo_passo', 'novo_prazo', 'links', 'autor', 'criado_em', 'versao_plano_resultante',

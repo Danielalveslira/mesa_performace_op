@@ -10,7 +10,7 @@ function createPlanoAcaoBootstrap_(user) {
     available: true,
     user: publicPlanoUser_(user),
     permissions: createPlanoPermissionFlags_(user),
-    plans: listAccessiblePlans_(user).map(serializePlanoPublicPlan_),
+    plans: listAccessiblePlans_(user).map(serializePlanoPublicPlanSummary_),
     options: {
       statuses: PLANO_ACAO_CONFIG.STATUS.map((value) => ({ value, label: planoStatusLabel_(value) })),
       priorities: PLANO_ACAO_CONFIG.PRIORITIES.map((value) => ({ value, label: planoPriorityLabel_(value) })),
@@ -55,6 +55,10 @@ function getPlanoAcaoDetail_impl_(planId) {
 
 function serializePlanoPublicPlan_(record) {
   return serializePlanoPublicRecord_(record, PLANO_ACAO_CONFIG.PUBLIC_FIELDS.PLAN);
+}
+
+function serializePlanoPublicPlanSummary_(record) {
+  return serializePlanoPublicRecord_(record, PLANO_ACAO_CONFIG.PUBLIC_FIELDS.PLAN_LIST);
 }
 
 function serializePlanoPublicUpdate_(record) {
