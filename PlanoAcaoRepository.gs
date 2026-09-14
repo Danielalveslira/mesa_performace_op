@@ -47,6 +47,114 @@ function readPlanoRecordsByField_(sheetName, fieldName, fieldValue) {
     .filter(hasPlanoRecordData_);
 }
 
+/**
+ * Lê Plano_Atualizacoes, Plano_Historico e Plano_Evidencias filtradas por
+ * plano_id em uma única chamada HTTP (Sheets.Spreadsheets.Values.batchGet),
+ * em vez de 3 idas e voltas separadas via SpreadsheetApp — cada uma delas
+ * já custando 3 sub-chamadas (cabeçalho + TextFinder + getRangeList) em
+ * readPlanoRecordsByField_. Usado por getPlanoAcaoDetail_impl_, o caminho
+ * mais executado do módulo (abrir qualquer plano).
+ *
+ * Requer o serviço avançado "Sheets API" habilitado no projeto (já
+ * declarado em appsscript.json > dependencies.enabledAdvancedServices; em
+ * projetos antigos pode ser preciso habilitar manualmente em Serviços, na
+ * barra lateral do editor do Apps Script). Se o serviço não estiver
+ * disponível por qualquer motivo, cai para o caminho antigo automaticamente
+ * — nenhuma funcionalidade depende de tê-lo habilitado, só a performance.
+ */
+function readPlanoRelatedRecordsBatch_(planId) {
+  if (typeof Sheets === 'undefined' || !Sheets.Spreadsheets || !Sheets.Spreadsheets.Values) {
+    return readPlanoRelatedRecordsFallback_(planId);
+  }
+
+  const sheetKeys = [
+    ['updates', PLANO_ACAO_CONFIG.SHEETS.UPDATES],
+    ['history', PLANO_ACAO_CONFIG.SHEETS.HISTORY],
+    ['evidence', PLANO_ACAO_CONFIG.SHEETS.EVIDENCE],
+  ];
+
+  try {
+    const spreadsheetId = getSpreadsheet_().getId();
+    const timezone = getPlanoTimeZone_();
+    const response = Sheets.Spreadsheets.Values.batchGet(spreadsheetId, {
+      ranges: sheetKeys.map(([, sheetName]) => sheetName),
+      // UNFORMATTED_VALUE evita risco de separador de milhar em campos
+      // numéricos (tamanho, percentual_conclusao); FORMATTED_STRING faz as
+      // células de data virem como texto "yyyy-MM-dd[ HH:mm:ss]" (o mesmo
+      // formato que ensurePlanoSheet_ aplica a essas colunas), em vez de
+      // número de série — convertido de volta para Date logo abaixo.
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      dateTimeRenderOption: 'FORMATTED_STRING',
+    });
+    const valueRanges = response.valueRanges || [];
+    const result = {};
+    sheetKeys.forEach(([key], index) => {
+      const values = (valueRanges[index] && valueRanges[index].values) || [];
+      result[key] = valuesToPlanoRecords_(values)
+        .filter((record) => String(record.plano_id || '') === String(planId || ''))
+        .map((record) => parsePlanoBatchDateFields_(record, timezone));
+    });
+    return result;
+  } catch (error) {
+    console.warn(
+      `Falha ao usar o Sheets Advanced Service no detalhe do plano, usando leitura padrão: ${
+        error && error.message ? error.message : error
+      }`
+    );
+    return readPlanoRelatedRecordsFallback_(planId);
+  }
+}
+
+function readPlanoRelatedRecordsFallback_(planId) {
+  return {
+    updates: readPlanoRecordsByField_(PLANO_ACAO_CONFIG.SHEETS.UPDATES, 'plano_id', planId),
+    history: readPlanoRecordsByField_(PLANO_ACAO_CONFIG.SHEETS.HISTORY, 'plano_id', planId),
+    evidence: readPlanoRecordsByField_(PLANO_ACAO_CONFIG.SHEETS.EVIDENCE, 'plano_id', planId),
+  };
+}
+
+function valuesToPlanoRecords_(values) {
+  if (!values || !values.length) return [];
+  const headers = values[0].map((header) => String(header || '').trim());
+  return values.slice(1)
+    .map((row, index) => createPlanoRecord_(headers, row, index + 2))
+    .filter(hasPlanoRecordData_);
+}
+
+// Campos de data conhecidos das 3 abas lidas por readPlanoRelatedRecordsBatch_
+// (Plano_Atualizacoes, Plano_Historico, Plano_Evidencias) e o formato que
+// ensurePlanoSheet_/formatPlanoSheet_ garante para cada um.
+const PLANO_BATCH_DATE_FIELDS_ = Object.freeze({
+  criado_em: 'yyyy-MM-dd HH:mm:ss',
+  novo_prazo: 'yyyy-MM-dd',
+});
+
+/**
+ * Converte os campos de data (recebidos como texto formatado do batchGet)
+ * de volta para objetos Date, para serializePlanoRecord_ tratá-los como já
+ * trata qualquer outra leitura via SpreadsheetApp. Se o texto não bater com
+ * o formato esperado — planilha antiga sem o número de formato aplicado a
+ * essa linha, por exemplo — lança um erro em vez de gravar um valor
+ * inconsistente; o catch em readPlanoRelatedRecordsBatch_ captura isso e
+ * usa o caminho de leitura padrão para esta requisição.
+ */
+function parsePlanoBatchDateFields_(record, timezone) {
+  Object.keys(PLANO_BATCH_DATE_FIELDS_).forEach((field) => {
+    if (!Object.prototype.hasOwnProperty.call(record, field)) return;
+    const value = record[field];
+    if (value === '' || value === null || value === undefined) return;
+
+    const format = PLANO_BATCH_DATE_FIELDS_[field];
+    const text = String(value).trim();
+    const date = Utilities.parseDate(text, timezone, format);
+    if (Number.isNaN(date.getTime()) || Utilities.formatDate(date, timezone, format) !== text) {
+      throw new Error(`Formato de data inesperado em ${field}: ${text}`);
+    }
+    record[field] = date;
+  });
+  return record;
+}
+
 function deletePlanoRecordsByField_(sheetName, fieldName, fieldValue) {
   const records = readPlanoRecordsByField_(sheetName, fieldName, fieldValue);
   return deletePlanoRows_(getPlanoSheet_(sheetName), records.map((record) => record.__row));

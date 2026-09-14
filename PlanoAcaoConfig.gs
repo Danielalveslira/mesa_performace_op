@@ -27,6 +27,68 @@ function planoRunPublic_(label, fn) {
   }
 }
 
+/**
+ * LockService só oferece um mutex por escopo fixo (script/usuário/documento):
+ * não existe um "getScriptLock('minha-chave')". Antes desta mudança, TODA
+ * mutação do sistema — criação/edição de plano, upload de evidência,
+ * validação de meta (domínio totalmente independente, outra planilha) e
+ * envio de alertas — disputava o mesmo LockService.getScriptLock() global,
+ * então validar uma meta bloqueava (e era bloqueado por) qualquer edição de
+ * plano em uma regional completamente diferente.
+ *
+ * Isto implementa um mutex nomeado sobre o próprio script lock: o script
+ * lock é seguro (fornece exclusão mútua atômica de verdade) e é mantido
+ * apenas pelo tempo mínimo de checar/gravar uma chave no CacheService — não
+ * pelo tempo da operação inteira. O trabalho real acontece com o script
+ * lock já liberado, então operações em domínios diferentes (ex.: 'plano-
+ * crud' vs. 'plano-metas' vs. 'plano-alertas') deixam de se bloquear mutuamente.
+ *
+ * Dentro de um mesmo domínio o comportamento de serialização é idêntico ao
+ * lock global anterior — nenhuma das travas de segurança já existentes
+ * (renumeração de linhas em exclusões, __row capturado antes de escrever)
+ * foi alterada, porque createPlanoAcao_impl_/updatePlanoAcao_impl_/
+ * addPlanoAcaoUpdate_impl_/uploadPlanoEvidence_impl_/deletePlanoEvidence_impl_/
+ * deletePlanoAcao_impl_ continuam todos no mesmo domínio 'plano-crud'.
+ *
+ * O CacheService tem TTL próprio (60s) como rede de segurança: se uma
+ * execução travar/expirar sem liberar (timeout do Apps Script, erro não
+ * tratado antes do finally), o lock nomeado se autolibera em até 60s em vez
+ * de ficar preso para sempre.
+ */
+function acquirePlanoNamedLock_(domain, waitMs) {
+  const cache = CacheService.getScriptCache();
+  const key = `plano-named-lock:${domain}`;
+  const deadline = Date.now() + Math.max(0, Number(waitMs) || 0);
+
+  for (;;) {
+    const scriptLock = LockService.getScriptLock();
+    scriptLock.waitLock(5000);
+    try {
+      if (!cache.get(key)) {
+        cache.put(key, '1', 60);
+        return { release: () => cache.remove(key) };
+      }
+    } finally {
+      scriptLock.releaseLock();
+    }
+    if (Date.now() >= deadline) return null;
+    Utilities.sleep(300);
+  }
+}
+
+/**
+ * Variante de acquirePlanoNamedLock_ que lança PlanoUserError em vez de
+ * devolver null, para os pontos de entrada que sempre precisam do lock
+ * para prosseguir (equivalente ao antigo lock.waitLock(30000) + uso direto).
+ */
+function requirePlanoNamedLock_(domain, waitMs) {
+  const lock = acquirePlanoNamedLock_(domain, waitMs);
+  if (!lock) {
+    throw new PlanoUserError('O sistema está ocupado processando outra operação. Tente novamente em instantes.');
+  }
+  return lock;
+}
+
 const PLANO_ACAO_CONFIG = Object.freeze({
   SCHEMA_VERSION: '2',
   SCHEMA_VERSION_PROPERTY: 'PLANO_ACAO_SCHEMA_VERSION',

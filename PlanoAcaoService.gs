@@ -30,15 +30,16 @@ function getPlanoAcaoDetail(planId) {
 function getPlanoAcaoDetail_impl_(planId) {
   const user = getAppUser_();
   const plan = requireAccessiblePlan_(planId, user);
-  const updates = readPlanoRecordsByField_(PLANO_ACAO_CONFIG.SHEETS.UPDATES, 'plano_id', plan.id)
+  const related = readPlanoRelatedRecordsBatch_(plan.id);
+  const updates = related.updates
     .sort(comparePlanoDatesDesc_)
     .map(serializePlanoPublicUpdate_);
-  const history = readPlanoRecordsByField_(PLANO_ACAO_CONFIG.SHEETS.HISTORY, 'plano_id', plan.id)
+  const history = related.history
     .sort(comparePlanoDatesDesc_)
     .filter((record) => String(record.operacao || '') !== 'atualizacao')
     .slice(0, 20)
     .map(serializePlanoPublicHistory_);
-  const evidence = readPlanoRecordsByField_(PLANO_ACAO_CONFIG.SHEETS.EVIDENCE, 'plano_id', plan.id)
+  const evidence = related.evidence
     .filter((record) => toPlanoBoolean_(record.ativo, true))
     .sort(comparePlanoDatesDesc_)
     .map(serializePlanoPublicEvidence_);
@@ -77,8 +78,14 @@ function createPlanoAcao_impl_(payload) {
   requirePlanoPermission_(user, 'create');
   const operationId = validatePlanoOperationId_(payload && payload.operacao_id);
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // Domínio 'plano-crud': todas as mutações de plano/atualização/evidência
+  // compartilham este lock nomeado porque tocam as mesmas 4 abas
+  // (Planos_Acao, Plano_Atualizacoes, Plano_Historico, Plano_Evidencias) e
+  // dependem de números de linha (__row) que uma exclusão em outra dessas
+  // operações poderia renumerar — não é seguro serializar cada uma
+  // separadamente sem reavaliar toda a lógica de __row. Ver
+  // acquirePlanoNamedLock_ em PlanoAcaoConfig.gs para o porquê deste padrão.
+  const lock = requirePlanoNamedLock_('plano-crud', 30000);
   let planId = '';
   let duplicateRequest = false;
   try {
@@ -130,7 +137,7 @@ function createPlanoAcao_impl_(payload) {
       }
     }
   } finally {
-    lock.releaseLock();
+    lock.release();
   }
 
   const detail = getPlanoAcaoDetail(planId);
@@ -146,8 +153,7 @@ function updatePlanoAcao_impl_(planId, payload, expectedVersion) {
   const user = getAppUser_();
   requirePlanoPermission_(user, 'update');
   const operationId = validatePlanoOperationId_(payload && payload.operacao_id);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const lock = requirePlanoNamedLock_('plano-crud', 30000);
   let duplicateRequest = false;
 
   try {
@@ -205,7 +211,7 @@ function updatePlanoAcao_impl_(planId, payload, expectedVersion) {
       }
     }
   } finally {
-    lock.releaseLock();
+    lock.release();
   }
 
   const detail = getPlanoAcaoDetail(planId);
@@ -221,8 +227,7 @@ function addPlanoAcaoUpdate_impl_(planId, payload, expectedVersion) {
   const user = getAppUser_();
   requirePlanoPermission_(user, 'update');
   const operationId = validatePlanoOperationId_(payload && payload.operacao_id);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const lock = requirePlanoNamedLock_('plano-crud', 30000);
   let duplicateRequest = false;
   let operationUpdateId = '';
 
@@ -292,7 +297,7 @@ function addPlanoAcaoUpdate_impl_(planId, payload, expectedVersion) {
       }
     }
   } finally {
-    lock.releaseLock();
+    lock.release();
   }
 
   const detail = getPlanoAcaoDetail(planId);
@@ -309,8 +314,7 @@ function uploadPlanoEvidence_impl_(planId, updateId, payload) {
   const user = getAppUser_();
   requirePlanoPermission_(user, 'update');
   const fileData = validatePlanoEvidencePayload_(payload);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const lock = requirePlanoNamedLock_('plano-crud', 30000);
 
   let driveFile = null;
   let evidence = null;
@@ -393,7 +397,7 @@ function uploadPlanoEvidence_impl_(planId, updateId, payload) {
     }
     throw error;
   } finally {
-    lock.releaseLock();
+    lock.release();
   }
 }
 
@@ -440,8 +444,7 @@ function deletePlanoEvidence(evidenceId) {
 function deletePlanoEvidence_impl_(evidenceId) {
   const user = getAppUser_();
   requirePlanoPermission_(user, 'update');
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const lock = requirePlanoNamedLock_('plano-crud', 30000);
 
   try {
     const evidence = requirePlanoEvidence_(evidenceId);
@@ -476,7 +479,7 @@ function deletePlanoEvidence_impl_(evidenceId) {
     }
     return { success: true, id: evidence.id };
   } finally {
-    lock.releaseLock();
+    lock.release();
   }
 }
 
@@ -487,8 +490,7 @@ function deletePlanoAcao(planId, expectedVersion) {
 function deletePlanoAcao_impl_(planId, expectedVersion) {
   const user = getAppUser_();
   requirePlanoPermission_(user, 'delete');
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const lock = requirePlanoNamedLock_('plano-crud', 30000);
 
   try {
     const existing = requireAccessiblePlan_(planId, user);
@@ -522,7 +524,7 @@ function deletePlanoAcao_impl_(planId, expectedVersion) {
       trashedEvidenceFiles,
     };
   } finally {
-    lock.releaseLock();
+    lock.release();
   }
 }
 

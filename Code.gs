@@ -446,8 +446,10 @@ function setCityGoalValidation(city, month, goalType, validated) {
       throw new PlanoUserError('Meta não encontrada para a cidade e o mês selecionados.');
     }
 
-    const lock = LockService.getScriptLock();
-    lock.waitLock(30000);
+    // Domínio próprio ('plano-metas'): Metas_Validacao não é tocada por
+    // nenhuma operação de plano de ação, então não faz sentido competir
+    // pelo mesmo lock que serializa criação/edição de planos.
+    const lock = requirePlanoNamedLock_('plano-metas', 30000);
     try {
       upsertCityGoalValidation_(
         spreadsheet,
@@ -460,7 +462,7 @@ function setCityGoalValidation(city, month, goalType, validated) {
       SpreadsheetApp.flush();
       invalidateDashboardCache_();
     } finally {
-      lock.releaseLock();
+      lock.release();
     }
 
     return {
