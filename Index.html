@@ -638,6 +638,19 @@
         border-collapse: separate;
         border-spacing: 0;
       }
+      /* .section usa overflow: hidden pra recortar o conteúdo nas bordas
+         arredondadas do card — mas isso vira o ancestral de "clipping" mais
+         próximo da célula sticky, e qualquer ancestral com overflow
+         diferente de visible entre o elemento sticky e o viewport
+         (mesmo sem barra de rolagem própria) impede o position: sticky de
+         funcionar. Por isso essa seção específica volta a overflow:
+         visible. Efeito colateral aceito: sem o recorte, o fundo cinza do
+         hover na última linha pode aparecer com canto quadrado nos 8px
+         inferiores do card em vez de seguir o arredondado — não há outro
+         conteúdo na seção que dependa do corte.  */
+      .section.city-analysis-section {
+        overflow: visible;
+      }
       .city-analysis-table thead th {
         position: sticky;
         top: 0;
@@ -920,7 +933,7 @@
 
         </div>
 
-        <section class="section">
+        <section class="section city-analysis-section">
           <div class="section-header">
             <h2>Análise por cidade</h2>
             <span id="city-count" class="meta"></span>
