@@ -62,8 +62,8 @@ function processarAlertasPlanos_() {
 
 function runPlanoAlerts_(dryRun, forceDashboardRefresh) {
   // Domínio próprio ('plano-alertas'): processar alertas só lê planos e
-  // grava em Alertas_Historico, não compete por Planos_Acao/Plano_*
-  // (domínio 'plano-crud') nem por Metas_Validacao ('plano-metas').
+  // grava em Alertas_Historico, não compete pelo domínio 'plano-crud'
+  // (Planos_Acao/Plano_*).
   const lock = acquirePlanoNamedLock_('plano-alertas', 5000);
   if (!lock) {
     return { success: false, skipped: true, message: 'Já existe outra execução de alertas em andamento.' };

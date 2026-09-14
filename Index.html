@@ -246,33 +246,9 @@
         text-align: left;
       }
       .city-goal + .city-goal { border-left: 1px solid var(--border); }
-      .city-goal-button { width: 100%; color: inherit; cursor: pointer; font: inherit; }
-      .city-goal-button:hover { background: #f6f8fa; }
-      .city-goal-button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
-      .city-goal-button:disabled { cursor: wait; opacity: 0.65; }
-      .city-goal-pending { background: var(--yellow-bg); }
-      .city-goal-button.city-goal-pending:hover { background: #fae17d; }
       .city-goal-label { color: var(--muted); font-size: 10px; font-weight: 600; }
       .city-goal-value { color: #0550ae; font-size: 13px; font-variant-numeric: tabular-nums; }
-      .city-goal-pending .city-goal-value { color: var(--yellow); }
-      .city-goal-status { color: var(--muted); font-size: 9px; line-height: 1.25; }
-      .city-goal-pending .city-goal-status { color: var(--yellow); font-weight: 700; }
       .detail-metric-item.goal-card .detail-card-value { color: #0550ae; }
-      .detail-metric-item.goal-card-pending { box-shadow: inset 3px 0 #d4a72c; }
-      .detail-metric-item.goal-card-pending .detail-card-value { color: var(--yellow); }
-      .goal-validation-button {
-        margin-top: 10px;
-        border: 0;
-        background: transparent;
-        color: var(--blue);
-        cursor: pointer;
-        padding: 0;
-        font-size: 11px;
-        font-weight: 600;
-        text-align: left;
-      }
-      .goal-validation-button:hover { text-decoration: underline; }
-      .goal-validation-button:disabled { cursor: wait; opacity: 0.65; }
 
       .excluded-panel {
         margin-bottom: 20px;
@@ -405,8 +381,6 @@
       .detail-metric-item { min-width: 0; padding: 11px 13px; }
       .detail-metric-item:nth-child(even) { border-left: 1px solid var(--border); }
       .detail-metric-item:nth-child(n + 3) { border-top: 1px solid var(--border); }
-      .detail-metric-item.goal-card-pending { background: var(--yellow-bg); }
-      .detail-metric-item .goal-validation-button { margin-top: 7px; }
 
       .detail-section {
         border: 1px solid var(--border);
@@ -1342,7 +1316,6 @@
           GOAL_DEFINITIONS.forEach(({ key }) => {
             if (!hasGoalValue(cityGoals[key])) return;
             totals[key] += Number(cityGoals[key]);
-            if (!isGoalValidated(record, key)) totals.pendingCount += 1;
             hasAnyGoal = true;
           });
           if (hasAnyGoal) totals.cityCount += 1;
@@ -1353,7 +1326,6 @@
           installation: 0,
           growth: 0,
           cityCount: 0,
-          pendingCount: 0,
         });
         const movement = records.reduce((totals, record) => {
           if (record.difference > 0) {
@@ -1389,14 +1361,6 @@
 
       function hasGoalValue(value) {
         return Number.isFinite(Number(value)) && value !== null && value !== '';
-      }
-
-      function isGoalValidated(record, goalKey) {
-        return !record.goalValidation || record.goalValidation[goalKey] !== false;
-      }
-
-      function canManageGoalValidation() {
-        return Boolean(state.permissions && state.permissions.administer);
       }
 
       function hasValidPopulation(record) {
@@ -1510,9 +1474,8 @@
             market: GOAL_DEFINITIONS.map((definition, index) => ({
               label: definition.label,
               value: formatInteger(summary.goals[definition.key]),
-              helper: index === 0 && summary.goals.pendingCount
-                ? `${formatInteger(summary.goals.pendingCount)} metas não validadas`
-                : index === 0 ? `${formatInteger(summary.goals.cityCount)} cidades com meta`
+              helper: index === 0
+                ? `${formatInteger(summary.goals.cityCount)} cidades com meta`
                 : 'Meta mensal consolidada',
             })),
           },
@@ -2216,11 +2179,8 @@
           ? rows.map((record) => createCityRow(record, summary))
           : [createEmptyRow(12, 'Nenhuma cidade encontrada.')];
         document.getElementById('city-body').replaceChildren(...bodyRows);
-        const adminHint = canManageGoalValidation()
-          ? ' • Clique em uma meta para alterar a validação'
-          : '';
         document.getElementById('city-count').textContent =
-          `${rows.length} de ${includedCities.length} cidades${adminHint}`;
+          `${rows.length} de ${includedCities.length} cidades`;
       }
 
       function createCityHeader(period) {
@@ -2287,15 +2247,8 @@
         container.className = 'city-goals';
         GOAL_DEFINITIONS.forEach(({ key: goalKey, label: labelText }) => {
           const goal = record.goals && record.goals[goalKey];
-          const validated = isGoalValidated(record, goalKey);
-          const interactive = canManageGoalValidation() && hasGoalValue(goal);
-          const item = document.createElement(interactive ? 'button' : 'span');
-          item.className = `city-goal ${interactive ? 'city-goal-button' : ''} ${validated ? '' : 'city-goal-pending'}`.trim();
-          if (interactive) {
-            item.type = 'button';
-            item.title = validated ? 'Marcar como não validada' : 'Marcar como validada';
-            item.addEventListener('click', () => toggleCityGoalValidation(item, record, goalKey));
-          }
+          const item = document.createElement('span');
+          item.className = 'city-goal';
           const label = document.createElement('span');
           label.className = 'city-goal-label';
           label.textContent = labelText;
@@ -2303,12 +2256,6 @@
           value.className = 'city-goal-value';
           value.textContent = formatGoalValue(goal);
           item.append(label, value);
-          if (!validated) {
-            const status = document.createElement('span');
-            status.className = 'city-goal-status';
-            status.textContent = 'Meta não validada';
-            item.appendChild(status);
-          }
           container.appendChild(item);
         });
         cell.appendChild(container);
@@ -2558,65 +2505,19 @@
         helper.textContent = metric.helper;
 
         item.append(label, value, helper);
-        if (metric.goalKey && metric.record && canManageGoalValidation() && hasGoalValue(metric.rawValue)) {
-          const button = document.createElement('button');
-          button.className = 'goal-validation-button';
-          button.type = 'button';
-          button.textContent = metric.validated
-            ? 'Marcar não validada'
-            : 'Validar meta';
-          button.addEventListener('click', () =>
-            toggleCityGoalValidation(button, metric.record, metric.goalKey)
-          );
-          item.appendChild(button);
-        }
         return item;
       }
 
       function createGoalMetric(label, record, goalKey) {
         const value = record.goals && record.goals[goalKey];
-        const validated = isGoalValidated(record, goalKey);
         return {
           label,
           value: formatGoalValue(value),
-          helper: !validated
-            ? 'Meta não validada'
-            : hasGoalValue(value) ? `Meta mensal de ${state.data.period.currentLabel}`
+          helper: hasGoalValue(value)
+            ? `Meta mensal de ${state.data.period.currentLabel}`
             : 'Meta não informada para a cidade',
-          className: `goal-card ${validated ? '' : 'goal-card-pending'}`.trim(),
-          goalKey,
-          record,
-          rawValue: value,
-          validated,
+          className: 'goal-card',
         };
-      }
-
-      function toggleCityGoalValidation(button, record, goalKey) {
-        if (!canManageGoalValidation() || !hasGoalValue(record.goals && record.goals[goalKey])) return;
-
-        const validated = !isGoalValidated(record, goalKey);
-        button.disabled = true;
-        google.script.run
-          .withSuccessHandler((result) => {
-            record.goalValidation = record.goalValidation || {};
-            record.goalValidation[result.goalType] = result.validated;
-            renderAnalysis();
-            if (state.activeCityChart && state.activeCityChart.city === record.city) {
-              const history = state.historyByCity.get(record.city);
-              const changes = createHistoryChanges(history.points);
-              renderCityMetrics(record, history, changes);
-            }
-          })
-          .withFailureHandler((error) => {
-            button.disabled = false;
-            showError(normalizeAppError(error));
-          })
-          .setCityGoalValidation(
-            record.city,
-            state.data.period.currentKey,
-            goalKey,
-            validated
-          );
       }
 
       function createHistoryChanges(points) {
