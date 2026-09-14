@@ -13,9 +13,15 @@
     detailRequestId: 0,
     formOperationId: '',
     updateOperationId: '',
+    listVisibleGroupCount: 0,
   };
   const PLANO_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
   const PLANO_MAX_IMAGES_PER_UPLOAD = 3;
+  // Planos são exibidos agrupados por cidade (planoCreateGroupedListRows).
+  // Paginar por cidade em vez de por plano preserva o agrupamento existente
+  // sem tocar em planoCreateCityGroupRow/planoCreateListRow: cada clique em
+  // "carregar mais" só libera mais grupos, nunca quebra um grupo ao meio.
+  const PLANO_LIST_PAGE_SIZE = 25;
   // Valor padrão até o bootstrap responder; passa a refletir
   // Alertas_Config.dias_sem_atualizacao assim que planoApplyBootstrap roda,
   // para não divergir do critério real usado pelos alertas por e-mail.
@@ -312,8 +318,17 @@
     planoRenderList();
   }
 
-  function planoRenderList() {
+  // Aceita um objeto de opções (chamadas explícitas de "carregar mais") ou
+  // nada/um Event (listeners de input/change/clique de filtro): um Event não
+  // tem propriedade preserveGroupLimit, então qualquer mudança de busca ou
+  // filtro volta para a primeira página automaticamente, sem precisar de
+  // lógica extra nos listeners existentes.
+  function planoRenderList(options) {
     if (!planoState.available) return;
+    if (!(options && options.preserveGroupLimit)) {
+      planoState.listVisibleGroupCount = PLANO_LIST_PAGE_SIZE;
+    }
+
     const search = normalizeText(document.getElementById('plan-search').value);
     const status = document.getElementById('plan-status-filter').value;
     const regional = document.getElementById('plan-region-filter').value;
@@ -327,28 +342,54 @@
         && planoMatchesAttentionFilter(plan, planoState.attentionFilter);
     });
 
-    const rows = plans.length
-      ? planoCreateGroupedListRows(plans)
+    const groupEntries = Array.from(planoGroupPlansByCity(plans).entries());
+    const visibleCount = Math.min(planoState.listVisibleGroupCount, groupEntries.length);
+    const visibleEntries = groupEntries.slice(0, visibleCount);
+
+    const rows = groupEntries.length
+      ? planoCreateGroupedListRows(visibleEntries)
       : [createEmptyRow(8, 'Nenhum plano encontrado.')];
     document.getElementById('plans-body').replaceChildren(...rows);
+    planoRenderListPager(groupEntries.length, visibleCount);
   }
 
-  function planoCreateGroupedListRows(filteredPlans) {
-    const allCityGroups = planoCreateCityMap(planoState.plans);
-    const groups = new Map();
-    filteredPlans.forEach((plan) => {
-      const key = normalizeText(plan.cidade) || 'sem-cidade';
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(plan);
+  function planoRenderListPager(totalGroups, visibleGroups) {
+    if (visibleGroups >= totalGroups) return;
+    const row = document.createElement('tr');
+    // Reaproveita o layout de mobile-empty-row (célula única e centralizada,
+    // sem o rótulo automático de coluna do modo responsivo) — mesmo caso de
+    // uso desta linha: uma célula com colSpan, sem pares rótulo/valor.
+    row.className = 'plan-load-more-row mobile-empty-row';
+    const cell = document.createElement('td');
+    cell.colSpan = 8;
+    const button = planoElement(
+      'button',
+      'secondary-button',
+      `Carregar mais cidades (${visibleGroups} de ${totalGroups})`
+    );
+    button.type = 'button';
+    button.addEventListener('click', () => {
+      planoState.listVisibleGroupCount += PLANO_LIST_PAGE_SIZE;
+      planoRenderList({ preserveGroupLimit: true });
     });
-    return Array.from(groups.entries()).flatMap(([key, visiblePlans]) => {
+    cell.appendChild(button);
+    row.appendChild(cell);
+    document.getElementById('plans-body').appendChild(row);
+  }
+
+  // Recebe entradas [chave, planos] já agrupadas e (possivelmente) cortadas
+  // pela paginação de planoRenderList — nunca filtra ou agrupa por conta
+  // própria, para o corte de página nunca dividir um grupo de cidade ao meio.
+  function planoCreateGroupedListRows(groupEntries) {
+    const allCityGroups = planoGroupPlansByCity(planoState.plans);
+    return groupEntries.flatMap(([key, visiblePlans]) => {
       const cityPlans = allCityGroups.get(key) || visiblePlans;
       const planRows = visiblePlans.map(planoCreateListRow);
       return [planoCreateCityGroupRow(cityPlans, visiblePlans.length), ...planRows];
     });
   }
 
-  function planoCreateCityMap(plans) {
+  function planoGroupPlansByCity(plans) {
     const groups = new Map();
     (plans || []).forEach((plan) => {
       const key = normalizeText(plan.cidade) || 'sem-cidade';
