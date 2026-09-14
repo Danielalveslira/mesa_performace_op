@@ -16,7 +16,10 @@
   };
   const PLANO_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
   const PLANO_MAX_IMAGES_PER_UPLOAD = 3;
-  const PLANO_STALE_DAYS = 7;
+  // Valor padrão até o bootstrap responder; passa a refletir
+  // Alertas_Config.dias_sem_atualizacao assim que planoApplyBootstrap roda,
+  // para não divergir do critério real usado pelos alertas por e-mail.
+  let planoStaleDays = 7;
   const PLANO_ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   let planoAlertCountdownTimer = null;
   let planoLastAlertSendResult = null;
@@ -108,6 +111,7 @@
     planoState.options = result && result.options
       ? result.options
       : { statuses: [], priorities: [], responsibles: [] };
+    planoStaleDays = Number(planoState.options.staleDays) || 7;
     planoState.message = result && result.message ? result.message : '';
     const currentAccess = planoAccessSignature();
     if (previousAccess && previousAccess !== currentAccess) planoResetSensitiveState();
@@ -278,7 +282,7 @@
         value: 'stale',
         label: 'Sem atualização',
         count: plans.filter(planoIsStale).length,
-        help: `${PLANO_STALE_DAYS} dias ou mais sem andamento`,
+        help: `${planoStaleDays} dias ou mais sem andamento`,
         tone: 'neutral',
       },
     ];
@@ -1208,15 +1212,21 @@
 
   async function planoUploadImages(planId, updateId, files) {
     const result = { successful: 0, failed: [] };
-    for (const file of files) {
-      try {
-        const payload = await planoReadImage(file);
-        await planoCall('uploadPlanoEvidence', planId, updateId, payload);
+    // Disparadas em paralelo: cada google.script.run é uma execução de
+    // servidor independente, então esperar uma imagem terminar antes de
+    // começar a próxima só adicionava latência de rede sem necessidade
+    // (o backend já serializa a escrita real via LockService).
+    const outcomes = await Promise.allSettled(files.map(async (file) => {
+      const payload = await planoReadImage(file);
+      return planoCall('uploadPlanoEvidence', planId, updateId, payload);
+    }));
+    outcomes.forEach((outcome, index) => {
+      if (outcome.status === 'fulfilled') {
         result.successful += 1;
-      } catch (error) {
-        result.failed.push({ name: file.name, message: planoErrorMessage(error) });
+      } else {
+        result.failed.push({ name: files[index].name, message: planoErrorMessage(outcome.reason) });
       }
-    }
+    });
     return result;
   }
 
@@ -1314,7 +1324,7 @@
     if (!timestamp) return true;
     const updatedAt = new Date(timestamp);
     if (Number.isNaN(updatedAt.getTime())) return true;
-    return Math.floor((Date.now() - updatedAt.getTime()) / 86400000) >= PLANO_STALE_DAYS;
+    return Math.floor((Date.now() - updatedAt.getTime()) / 86400000) >= planoStaleDays;
   }
 
   function planoAttentionFlags(plan) {

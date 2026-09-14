@@ -485,18 +485,36 @@ function upsertCityGoalValidation_(spreadsheet, city, month, goalType, validated
     sheet.setFrozenRows(1);
   }
 
-  const values = sheet.getDataRange().getValues();
-  const headerMap = createHeaderMap_(values[0]);
+  const lastColumn = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const headerMap = createHeaderMap_(sheet.getRange(1, 1, 1, lastColumn).getValues()[0]);
   headers.forEach((header) => getHeaderIndex_(headerMap, header));
   const cityIndex = getHeaderIndex_(headerMap, 'cidade');
   const monthIndex = getHeaderIndex_(headerMap, 'mes');
   const goalTypeIndex = getHeaderIndex_(headerMap, 'tipo_meta');
-  const targetRowIndex = values.findIndex((row, index) =>
-    index > 0
-    && normalizeCity_(row[cityIndex]) === city
-    && normalizeMonthKey_(row[monthIndex]) === month
-    && normalizeGoalKey_(row[goalTypeIndex]) === goalType
-  );
+
+  // Restringe a busca por TextFinder na coluna cidade (em vez de ler e
+  // varrer a planilha inteira com getDataRange) e só então confere mês e
+  // tipo de meta nas poucas linhas candidatas.
+  let targetRow = null;
+  if (lastRow > 1) {
+    const matches = sheet.getRange(2, cityIndex + 1, lastRow - 1, 1)
+      .createTextFinder(city)
+      .matchEntireCell(true)
+      .findAll();
+    for (let index = 0; index < matches.length; index += 1) {
+      const rowNumber = matches[index].getRow();
+      const rowValues = sheet.getRange(rowNumber, 1, 1, lastColumn).getValues()[0];
+      if (
+        normalizeMonthKey_(rowValues[monthIndex]) === month
+        && normalizeGoalKey_(rowValues[goalTypeIndex]) === goalType
+      ) {
+        targetRow = rowNumber;
+        break;
+      }
+    }
+  }
+
   const record = [
     city,
     month,
@@ -506,8 +524,8 @@ function upsertCityGoalValidation_(spreadsheet, city, month, goalType, validated
     new Date(),
   ];
 
-  if (targetRowIndex >= 0) {
-    sheet.getRange(targetRowIndex + 1, 1, 1, record.length).setValues([record]);
+  if (targetRow) {
+    sheet.getRange(targetRow, 1, 1, record.length).setValues([record]);
   } else {
     sheet.appendRow(record);
   }

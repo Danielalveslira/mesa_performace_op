@@ -157,6 +157,21 @@ function getPlanoAlertConfig_() {
   };
 }
 
+/**
+ * Mesma leitura de getPlanoAlertConfig_().staleDays, mas tolerante a
+ * Alertas_Config ainda não configurada (ex.: setupPlanoAlertas nunca
+ * executado) — usada pelo bootstrap de planos, que não pode falhar por
+ * causa de um módulo opcional.
+ */
+function getPlanoAlertStaleDaysSafe_() {
+  try {
+    return getPlanoAlertConfig_().staleDays;
+  } catch (error) {
+    const fallback = PLANO_ALERT_DEFAULTS.find((item) => item.key === 'dias_sem_atualizacao');
+    return Number(fallback.value);
+  }
+}
+
 function readPlanoAlertUsers_() {
   return readPlanoRecords_(PLANO_ACAO_CONFIG.SHEETS.USERS)
     .filter((record) => toPlanoBoolean_(record.ativo, false))

@@ -1,19 +1,8 @@
 function getPlanoAcaoBootstrap() {
-  try {
-    return createPlanoAcaoBootstrap_(getAppUser_());
-  } catch (error) {
-    if (error instanceof PlanoUserError) {
-      return { available: false, message: error.message };
-    }
-    // Erro não previsto (bug, falha de API do Google, etc.): registra o
-    // detalhe técnico completo no backend e mostra apenas uma mensagem
-    // genérica ao usuário.
-    console.error(`Falha inesperada em getPlanoAcaoBootstrap: ${(error && error.stack) || error}`);
-    return {
-      available: false,
-      message: 'Não foi possível carregar os planos de ação. Tente novamente em instantes.',
-    };
-  }
+  // PlanoUserError vira { available: false, message } no cliente (ver
+  // planoApplyBootstrapFailure em PlanoAcaoClient.gs); qualquer outro erro é
+  // mascarado por planoRunPublic_. Não duplicar esse tratamento aqui.
+  return planoRunPublic_('getPlanoAcaoBootstrap', () => createPlanoAcaoBootstrap_(getAppUser_()));
 }
 
 function createPlanoAcaoBootstrap_(user) {
@@ -26,6 +15,10 @@ function createPlanoAcaoBootstrap_(user) {
       statuses: PLANO_ACAO_CONFIG.STATUS.map((value) => ({ value, label: planoStatusLabel_(value) })),
       priorities: PLANO_ACAO_CONFIG.PRIORITIES.map((value) => ({ value, label: planoPriorityLabel_(value) })),
       responsibles: listPlanoResponsibleOptions_(user),
+      // Mesmo valor usado pelo backend para decidir alerta de "sem
+      // atualização" (Alertas_Config.dias_sem_atualizacao), para a UI não
+      // divergir do critério real de alerta.
+      staleDays: getPlanoAlertStaleDaysSafe_(),
     },
   };
 }
