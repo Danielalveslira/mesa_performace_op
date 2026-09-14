@@ -1694,11 +1694,11 @@
         ].join(' ');
         svg.appendChild(createSvgElement('path', { class: 'dashboard-base-area', d: areaPath }));
 
-        // Mesmo critério do gráfico de cidade: com muitos meses, evita rótulo
-        // numérico em cada barra/ponto (que se sobrepõem) e mostra só nas
-        // extremidades e no mês de maior perda, deixando o tooltip cobrir o
-        // restante.
-        const showAllLabels = points.length <= 8;
+        // Mostra o número em todo ponto/barra até uma janela de 12 meses (um
+        // ano fechado, o caso de uso mais comum); além disso os rótulos
+        // colidiriam, então volta a mostrar só nas extremidades e no mês de
+        // maior perda, deixando o tooltip cobrir o restante.
+        const showAllLabels = points.length <= 12;
         const maxLossIndex = points.reduce((best, point, index) => (
           point.loss > points[best].loss ? index : best
         ), 0);
