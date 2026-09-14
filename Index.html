@@ -2772,13 +2772,16 @@
         if (goalPath) {
           svg.appendChild(createSvgElement('path', { class: 'growth-goal-line', d: goalPath }));
         }
-        // Só os extremos da meta ganham rótulo direto (igual às barras de
-        // crescimento, que já mostram todo valor) — o resto fica no hover,
-        // pra não competir com os números das barras em cada mês.
+        // Mesmo critério dos outros gráficos: até 12 meses, a meta mostra
+        // número em todo ponto (igual às barras de crescimento, que sempre
+        // mostram); além disso, só os extremos ganham rótulo direto, com o
+        // resto no hover, pra não competir com os números das barras.
         const goalIndexes = movements
           .map((change, index) => (Number.isFinite(change.growthGoal) ? index : -1))
           .filter((index) => index >= 0);
-        const goalEdgeIndexes = new Set([goalIndexes[0], goalIndexes[goalIndexes.length - 1]]);
+        const goalEdgeIndexes = movements.length <= 12
+          ? new Set(goalIndexes)
+          : new Set([goalIndexes[0], goalIndexes[goalIndexes.length - 1]]);
 
         const barWidth = Math.min(24, xStep * 0.52);
         movements.forEach((change, index) => {
@@ -3039,10 +3042,11 @@
         });
         svg.appendChild(polyline);
 
-        // Rótulo em todo ponto virava uma parede de números com vários
-        // meses de histórico; agora só os extremos (primeiro, último, maior
-        // e menor valor) ganham número fixo — o resto aparece ao passar o
-        // mouse, igual ao restante dos gráficos do painel.
+        // Mostra o número em todo ponto até uma janela de 12 meses (o mesmo
+        // critério do gráfico de base geral); além disso os rótulos
+        // colidiriam, então volta a mostrar só os extremos (primeiro,
+        // último, maior e menor valor), com o resto no hover.
+        const showAllPointLabels = indexedPoints.length <= 12;
         const maximumValuePoint = indexedPoints.reduce((best, point) => (
           point.value > best.value ? point : best
         ), indexedPoints[0]);
@@ -3065,7 +3069,7 @@
 
           const isFirstPoint = point.index === 0;
           const isLastPoint = point.index === points.length - 1;
-          const isNotable = isFirstPoint || isLastPoint
+          const isNotable = showAllPointLabels || isFirstPoint || isLastPoint
             || point.index === maximumValuePoint.index
             || point.index === minimumValuePoint.index;
           if (isNotable) {
