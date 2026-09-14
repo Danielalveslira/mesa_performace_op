@@ -1,0 +1,3433 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <title>Mesa Operacional — Base Ativa</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f8fa;
+        --surface: #ffffff;
+        --border: #d0d7de;
+        --text: #1f2328;
+        --muted: #59636e;
+        --navy: #0f1b32;
+        --blue: #0969da;
+        --green: #1a7f37;
+        --green-bg: #dafbe1;
+        --red: #cf222e;
+        --red-bg: #ffebe9;
+        --yellow: #9a6700;
+        --yellow-bg: #fff8c5;
+        --shadow: 0 1px 2px rgba(31, 35, 40, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button, input, select { font: inherit; }
+
+      .header {
+        background: var(--navy);
+        color: #fff;
+        padding: 24px;
+      }
+
+      .header-inner,
+      .container {
+        width: min(1240px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      h1, h2, p { margin-top: 0; }
+      h1 { margin-bottom: 4px; font-size: clamp(22px, 4vw, 32px); }
+      h2 { margin-bottom: 14px; font-size: 18px; }
+
+      .subtitle { margin: 0; color: #c9d1d9; }
+
+      .refresh-button {
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        cursor: pointer;
+        padding: 9px 14px;
+        white-space: nowrap;
+      }
+
+      .refresh-button:hover { background: rgba(255, 255, 255, 0.16); }
+      .refresh-button:disabled { cursor: wait; opacity: 0.6; }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .download-button {
+        border-color: #58a6ff;
+        background: var(--blue);
+        font-weight: 600;
+      }
+
+      .download-button:hover { background: #0860ca; }
+
+      .dashboard-export-mode {
+        min-width: 1280px;
+      }
+
+      .dashboard-export-mode .header-actions,
+      .dashboard-export-mode .app-nav {
+        display: none !important;
+      }
+
+      .dashboard-export-mode .rankings-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-export-mode .table-wrap {
+        overflow: visible;
+      }
+
+      .dashboard-export-mode .responsive-table {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .dashboard-export-mode .sticky-city-column {
+        position: static;
+        box-shadow: none;
+      }
+
+      .container { padding: 24px 0 40px; }
+
+      .period-picker {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto;
+        align-items: end;
+        gap: 12px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .period-field {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .period-field .control { color: var(--text); font-weight: 500; }
+
+      .primary-button,
+      .swap-button {
+        min-height: 36px;
+        border: 1px solid var(--blue);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .primary-button {
+        background: var(--blue);
+        color: #fff;
+        padding: 7px 16px;
+      }
+
+      .primary-button:hover { background: #0860ca; }
+
+      .swap-button {
+        width: 40px;
+        border-color: var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 18px;
+      }
+
+      .swap-button:hover { background: #f6f8fa; }
+      .primary-button:disabled,
+      .swap-button:disabled { cursor: wait; opacity: 0.6; }
+
+      .status-panel,
+      .error-panel {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        padding: 18px;
+      }
+
+      .error-panel { border-color: #ff8182; color: var(--red); }
+      .hidden { display: none !important; }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .summary-meta {
+        grid-column: 1 / -1;
+        margin: -2px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .market-summary-card { grid-column: 1 / -1; padding: 14px 16px; }
+      .goals-summary-card { border-color: #b6d7fe; background: #f6faff; }
+      .market-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .market-summary-item { min-width: 0; }
+      .market-summary-item + .market-summary-item {
+        border-left: 1px solid var(--border);
+        padding-left: 12px;
+      }
+      .market-summary-value { display: block; font-size: 20px; font-weight: 700; }
+      .market-summary-label { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; }
+      .market-summary-helper { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+
+      .city-movement-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      .city-movement-item { min-width: 0; }
+      .city-movement-item + .city-movement-item {
+        border-left: 1px solid var(--border);
+        padding-left: 12px;
+      }
+      .city-movement-value { display: block; font-size: 20px; font-weight: 700; }
+      .city-movement-label { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; }
+      .city-movement-helper { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+
+      .city-goals {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(64px, 1fr));
+        min-width: 272px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+      }
+      .city-goal {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        padding: 7px 8px;
+        text-align: left;
+      }
+      .city-goal + .city-goal { border-left: 1px solid var(--border); }
+      .city-goal-button { width: 100%; color: inherit; cursor: pointer; font: inherit; }
+      .city-goal-button:hover { background: #f6f8fa; }
+      .city-goal-button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+      .city-goal-button:disabled { cursor: wait; opacity: 0.65; }
+      .city-goal-pending { background: var(--yellow-bg); }
+      .city-goal-button.city-goal-pending:hover { background: #fae17d; }
+      .city-goal-label { color: var(--muted); font-size: 10px; font-weight: 600; }
+      .city-goal-value { color: #0550ae; font-size: 13px; font-variant-numeric: tabular-nums; }
+      .city-goal-pending .city-goal-value { color: var(--yellow); }
+      .city-goal-status { color: var(--muted); font-size: 9px; line-height: 1.25; }
+      .city-goal-pending .city-goal-status { color: var(--yellow); font-weight: 700; }
+      .detail-metric-item.goal-card .detail-card-value { color: #0550ae; }
+      .detail-metric-item.goal-card-pending { box-shadow: inset 3px 0 #d4a72c; }
+      .detail-metric-item.goal-card-pending .detail-card-value { color: var(--yellow); }
+      .goal-validation-button {
+        margin-top: 10px;
+        border: 0;
+        background: transparent;
+        color: var(--blue);
+        cursor: pointer;
+        padding: 0;
+        font-size: 11px;
+        font-weight: 600;
+        text-align: left;
+      }
+      .goal-validation-button:hover { text-decoration: underline; }
+      .goal-validation-button:disabled { cursor: wait; opacity: 0.65; }
+
+      .excluded-panel {
+        margin-bottom: 20px;
+        border: 1px solid #f0c36d;
+        border-radius: 8px;
+        background: var(--yellow-bg);
+        padding: 14px 16px;
+      }
+
+      .excluded-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .excluded-title { margin: 0; font-size: 14px; }
+      .excluded-help { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+
+      .excluded-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .excluded-chip,
+      .restore-button,
+      .remove-city-button {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .excluded-chip { padding: 5px 8px; font-size: 12px; }
+      .excluded-chip:hover { border-color: var(--blue); color: var(--blue); }
+      .restore-button { padding: 6px 10px; color: var(--blue); font-weight: 600; }
+      .restore-button:hover { background: #f6f8fa; }
+      .remove-city-button { padding: 4px 8px; color: var(--red); font-size: 12px; }
+      .remove-city-button:hover { border-color: var(--red); background: var(--red-bg); }
+
+      .city-link {
+        border: 0;
+        background: transparent;
+        color: var(--blue);
+        cursor: pointer;
+        font-weight: 600;
+        padding: 0;
+        text-align: left;
+      }
+
+      .city-link:hover { text-decoration: underline; }
+
+      .city-dialog {
+        width: min(1040px, calc(100% - 32px));
+        max-height: 90vh;
+        margin: auto;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 16px 48px rgba(31, 35, 40, 0.24);
+        padding: 0;
+      }
+
+      .city-dialog::backdrop { background: rgba(15, 27, 50, 0.56); }
+
+      .detail-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        border-bottom: 1px solid var(--border);
+        padding: 20px 22px;
+      }
+
+      .detail-title { margin: 0 0 4px; font-size: 22px; }
+      .detail-subtitle { margin: 0; color: var(--muted); font-size: 13px; }
+
+      .close-button {
+        width: 34px;
+        height: 34px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      .close-button:hover { background: #f6f8fa; color: var(--text); }
+
+      .detail-body {
+        display: grid;
+        gap: 18px;
+        max-height: calc(90vh - 78px);
+        overflow-y: auto;
+        padding: 20px 22px 24px;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .detail-card {
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #f6f8fa;
+        padding: 13px;
+      }
+
+      .detail-card-label { display: block; color: var(--muted); font-size: 12px; }
+      .detail-card-value { display: block; margin-top: 5px; font-size: 18px; font-weight: 700; }
+      .detail-card-helper { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+      .detail-card-group { overflow: hidden; background: var(--surface); padding: 0; }
+      .detail-group-title {
+        display: block;
+        border-bottom: 1px solid var(--border);
+        padding: 11px 13px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .detail-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail-metric-item { min-width: 0; padding: 11px 13px; }
+      .detail-metric-item:nth-child(even) { border-left: 1px solid var(--border); }
+      .detail-metric-item:nth-child(n + 3) { border-top: 1px solid var(--border); }
+      .detail-metric-item.goal-card-pending { background: var(--yellow-bg); }
+      .detail-metric-item .goal-validation-button { margin-top: 7px; }
+
+      .detail-section {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .detail-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--border);
+        padding: 12px 14px;
+      }
+
+      .detail-section-header h3 { margin: 0; font-size: 15px; }
+      .detail-chart-controls {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chart-mode-select {
+        min-height: 32px;
+        max-width: 240px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+        padding: 5px 30px 5px 9px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .chart-mode-select:focus {
+        border-color: var(--blue);
+        outline: 2px solid rgba(9, 105, 218, 0.2);
+        outline-offset: 1px;
+      }
+      .chart-container { position: relative; min-height: 320px; padding: 14px; overflow-x: auto; }
+      .evolution-chart { display: block; width: 100%; min-width: 620px; height: auto; }
+      .chart-grid-line { stroke: var(--border); stroke-width: 1; }
+      .chart-axis-label { fill: var(--muted); font-size: 11px; }
+      .chart-axis-title { fill: var(--muted); font-size: 11px; font-weight: 600; }
+      .chart-line { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+      .chart-area { stroke: none; }
+      .chart-point { fill: var(--surface); stroke-width: 3; }
+      .chart-point-active { stroke-width: 4; }
+      .chart-hit-area { fill: transparent; cursor: pointer; outline: none; }
+      .chart-hit-area:focus { stroke: rgba(9, 105, 218, 0.35); stroke-width: 8; }
+      .movement-zero-line { stroke: var(--text); stroke-width: 1.5; }
+      .movement-bar { cursor: pointer; }
+      .movement-bar:focus { stroke: var(--blue); stroke-width: 3; outline: none; }
+      .movement-legend-label { fill: var(--muted); font-size: 11px; font-weight: 600; }
+      .growth-goal-line {
+        fill: none;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .goals-summary-card .market-summary-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .growth-goal-line { stroke: var(--blue); stroke-dasharray: 8 6; }
+      .growth-goal-point { fill: var(--surface); stroke: var(--blue); stroke-width: 3; }
+
+      .chart-value-label {
+        fill: var(--text);
+        stroke: var(--surface);
+        stroke-width: 4px;
+        paint-order: stroke;
+        font-size: 11px;
+        font-weight: 700;
+        pointer-events: none;
+      }
+
+      .chart-tooltip {
+        position: absolute;
+        z-index: 2;
+        min-width: 170px;
+        transform: translate(-50%, -100%);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 8px;
+        background: var(--navy);
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(31, 35, 40, 0.24);
+        pointer-events: none;
+        padding: 10px 12px;
+      }
+
+      .chart-tooltip-below { transform: translate(-50%, 0); }
+      .chart-tooltip-title { display: block; margin-bottom: 6px; font-size: 12px; }
+      .chart-tooltip-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        color: #c9d1d9;
+        font-size: 12px;
+      }
+      .chart-tooltip-row + .chart-tooltip-row { margin-top: 4px; }
+      .chart-tooltip-value { color: #fff; font-weight: 700; }
+
+      .dashboard-trend-section { margin-bottom: 20px; }
+      .dashboard-chart-title { display: grid; gap: 3px; }
+      .dashboard-chart-title h2 { margin: 0; }
+      .dashboard-chart-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+      }
+      .dashboard-chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .dashboard-chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+      .dashboard-chart-legend-line {
+        width: 24px;
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #54aeff, #0969da, #8250df);
+      }
+      .dashboard-chart-legend-bar {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        background: linear-gradient(180deg, #ff8182, #cf222e);
+      }
+      .dashboard-chart-legend-positive,
+      .dashboard-chart-legend-negative {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+      }
+      .dashboard-chart-legend-positive { background: linear-gradient(180deg, #4ac26b, #1a7f37); }
+      .dashboard-chart-legend-negative { background: linear-gradient(180deg, #ff8182, #cf222e); }
+      .dashboard-chart-legend-goal {
+        width: 24px;
+        border-top: 3px dashed var(--blue);
+      }
+      .dashboard-trend-chart { min-height: 390px; }
+      .dashboard-trend-svg { display: block; width: 100%; min-width: 680px; height: auto; }
+      .dashboard-base-area { fill: url(#dashboard-base-area-gradient); }
+      .dashboard-base-line {
+        fill: none;
+        stroke: url(#dashboard-base-line-gradient);
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .dashboard-base-point { fill: #fff; stroke: var(--blue); stroke-width: 3; }
+      .dashboard-base-point-active { fill: var(--blue); stroke-width: 4; }
+      .dashboard-loss-bar { fill: url(#dashboard-loss-gradient); rx: 4; }
+      .dashboard-loss-bar-active { filter: brightness(0.86); }
+      .dashboard-chart-hit-area { fill: transparent; cursor: pointer; outline: none; }
+      .dashboard-chart-hit-area:focus { fill: rgba(9, 105, 218, 0.06); }
+      .dashboard-loss-label { fill: var(--red); }
+
+      .card {
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .card-label { display: block; color: var(--muted); font-size: 13px; }
+      .card-value { display: block; margin-top: 6px; font-size: 24px; font-weight: 700; }
+      .positive { color: var(--green); }
+      .negative { color: var(--red); }
+      .neutral { color: var(--yellow); }
+
+      .rankings-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .market-rankings {
+        grid-template-columns: 1fr;
+        margin-bottom: 20px;
+      }
+
+      .section {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .section-header h2 { margin: 0; }
+      .meta { color: var(--muted); font-size: 12px; }
+
+      .table-wrap { overflow-x: auto; }
+
+      .sticky-city-column {
+        position: sticky;
+        z-index: 1;
+        left: 0;
+        min-width: 190px;
+        background: var(--surface);
+        box-shadow: 1px 0 0 var(--border), 8px 0 12px -12px rgba(31, 35, 40, 0.65);
+      }
+
+      th.sticky-city-column {
+        z-index: 2;
+        background: #f6f8fa;
+      }
+
+      tbody tr:hover .sticky-city-column { background: #f6f8fa; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      th, td {
+        border-bottom: 1px solid var(--border);
+        padding: 9px 10px;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      th { background: #f6f8fa; color: var(--muted); font-weight: 600; }
+      .explained-header { cursor: help; }
+      .column-help {
+        display: inline-block;
+        margin-left: 4px;
+        color: var(--blue);
+        font-size: 10px;
+        line-height: 1;
+        vertical-align: 1px;
+      }
+      tbody tr:hover { background: #f6f8fa; }
+      tfoot td { background: #f6f8fa; font-weight: 700; }
+      .ranking-summary-row td { font-weight: 600; }
+      .ranking-summary-total td {
+        border-top: 2px solid #b6e3ff;
+        color: var(--navy);
+        font-weight: 700;
+      }
+      .number { text-align: right; font-variant-numeric: tabular-nums; }
+      .empty-row { padding: 24px; color: var(--muted); text-align: center; }
+
+      .filters {
+        display: grid;
+        grid-template-columns: minmax(220px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr);
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .control {
+        width: 100%;
+        min-height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text);
+        padding: 7px 10px;
+      }
+
+      .control:focus {
+        border-color: var(--blue);
+        outline: 2px solid rgba(9, 105, 218, 0.2);
+        outline-offset: -1px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 8px;
+      }
+
+      .badge-growth { background: var(--green-bg); color: var(--green); }
+      .badge-decline { background: var(--red-bg); color: var(--red); }
+      .badge-stable { background: var(--yellow-bg); color: var(--yellow); }
+
+      @media (max-width: 900px) {
+        .period-picker { grid-template-columns: 1fr 1fr auto; }
+        .primary-button { grid-column: 1 / -1; }
+        .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .rankings-grid { grid-template-columns: 1fr; }
+        .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+
+      @media (max-width: 700px) {
+        .responsive-table .sticky-city-column {
+          position: static;
+          min-width: 0;
+          box-shadow: none;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .header { padding: 18px 0; }
+        .header-inner { align-items: flex-start; flex-direction: column; }
+        .header-actions { width: 100%; }
+        .header-actions .refresh-button { flex: 1; }
+        .container { padding-top: 16px; }
+        .period-picker { grid-template-columns: 1fr auto; }
+        .period-field { grid-column: 1 / -1; }
+        .primary-button { grid-column: 1 / -1; }
+        .excluded-header { align-items: flex-start; flex-direction: column; }
+        .summary-grid { grid-template-columns: 1fr; }
+        .market-summary-grid { grid-template-columns: 1fr; }
+        .goals-summary-card .market-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .goals-summary-card .market-summary-item + .market-summary-item {
+          border-top: 0;
+          border-left: 1px solid var(--border);
+          padding-top: 0;
+          padding-left: 10px;
+        }
+        .goals-summary-card .market-summary-item:nth-child(3) {
+          border-left: 0;
+          padding-left: 0;
+        }
+        .goals-summary-card .market-summary-item:nth-child(n + 3) {
+          border-top: 1px solid var(--border);
+          padding-top: 10px;
+        }
+        .market-summary-item + .market-summary-item {
+          border-top: 1px solid var(--border);
+          border-left: 0;
+          padding-top: 10px;
+          padding-left: 0;
+        }
+        .filters { grid-template-columns: 1fr; }
+        .card-value { font-size: 21px; }
+        .city-dialog { width: calc(100% - 16px); max-height: 94vh; }
+        .detail-header { padding: 16px; }
+        .detail-body { max-height: calc(94vh - 70px); padding: 16px; }
+        .detail-grid { grid-template-columns: 1fr; }
+        .detail-metric-grid { grid-template-columns: 1fr; }
+        .detail-metric-item:nth-child(even) { border-left: 0; }
+        .detail-metric-item:nth-child(n + 3) { border-top: 0; }
+        .detail-metric-item + .detail-metric-item { border-top: 1px solid var(--border); }
+        .city-goals { min-width: 0; width: 100%; }
+        .city-chart-section-header { align-items: flex-start; flex-direction: column; }
+        .detail-chart-controls { width: 100%; align-items: stretch; justify-content: space-between; }
+        .chart-mode-select { width: 100%; max-width: none; }
+        .dashboard-trend-section .section-header { align-items: flex-start; flex-direction: column; }
+        .dashboard-chart-actions { width: 100%; align-items: stretch; flex-direction: column; }
+        .dashboard-chart-legend { justify-content: flex-start; }
+      }
+    </style>
+    <?!= include_('PlanoAcaoStyles'); ?>
+  </head>
+  <body>
+    <header class="header">
+      <div class="header-inner">
+        <div>
+          <h1>Mesa Operacional</h1>
+          <p id="period-label" class="subtitle">Carregando período...</p>
+        </div>
+        <div class="header-actions">
+          <button id="download-dashboard-button" class="refresh-button download-button" type="button">
+            Baixar PDF
+          </button>
+          <button id="refresh-button" class="refresh-button" type="button">Atualizar dados</button>
+        </div>
+      </div>
+    </header>
+
+    <?!= include_('PlanoAcaoView'); ?>
+
+    <main id="dashboard-view" class="container">
+      <div id="loading" class="status-panel">Carregando dados da planilha...</div>
+      <div id="error" class="error-panel hidden" role="alert"></div>
+
+      <div id="dashboard" class="hidden">
+        <section class="period-picker" aria-label="Selecionar períodos da comparação">
+          <label class="period-field" for="current-month">
+            Mês analisado
+            <select id="current-month" class="control"></select>
+          </label>
+
+          <label class="period-field" for="previous-month">
+            Comparar com
+            <select id="previous-month" class="control"></select>
+          </label>
+
+          <button
+            id="swap-periods"
+            class="swap-button"
+            type="button"
+            title="Inverter períodos"
+            aria-label="Inverter períodos"
+          >⇄</button>
+
+          <button id="compare-button" class="primary-button" type="button">Comparar</button>
+        </section>
+
+        <section id="excluded-panel" class="excluded-panel hidden" aria-live="polite">
+          <div class="excluded-header">
+            <div>
+              <p class="excluded-title">
+                <strong>Cidades removidas da análise:</strong>
+                <span id="excluded-count">0</span>
+              </p>
+              <span class="excluded-help">A remoção afeta apenas este painel e não altera a planilha.</span>
+            </div>
+            <button id="restore-all-cities" class="restore-button" type="button">Restaurar todas</button>
+          </div>
+          <div id="excluded-list" class="excluded-list"></div>
+        </section>
+
+        <section id="summary" class="summary-grid" aria-label="Resumo da base ativa"></section>
+
+        <section class="section dashboard-trend-section" aria-labelledby="dashboard-trend-title">
+          <div class="section-header">
+            <div class="dashboard-chart-title">
+              <h2 id="dashboard-trend-title">Evolução da base e perdas mensais</h2>
+              <span id="dashboard-trend-period" class="meta"></span>
+            </div>
+            <div class="dashboard-chart-actions">
+              <div id="dashboard-chart-legend" class="dashboard-chart-legend" aria-label="Legenda do gráfico"></div>
+              <select id="dashboard-chart-mode" class="chart-mode-select" aria-label="Forma de análise do gráfico geral">
+                <option value="general">Crescimento geral</option>
+                <option value="positive-negative">Crescimento positivo x negativo</option>
+              </select>
+            </div>
+          </div>
+          <div id="dashboard-trend-chart" class="chart-container dashboard-trend-chart"></div>
+        </section>
+
+        <section class="representation-note" aria-label="Como interpretar a representatividade">
+          <div>
+            <strong>Como ler a representatividade</strong>
+            <span>A representatividade mostra quanto cada cidade responde pelo total de altas ou de quedas. Top 15 + outras cidades = 100% do grupo.</span>
+          </div>
+          <strong id="movement-equation" class="movement-equation"></strong>
+        </section>
+
+        <div class="rankings-grid">
+          <section class="section">
+            <div class="section-header">
+              <h2>Top 15 — Representatividade nas altas</h2>
+              <span class="meta">Percentual sobre todas as cidades que cresceram</span>
+            </div>
+            <div class="table-wrap">
+              <table class="responsive-table ranking-table">
+                <thead id="growth-head"></thead>
+                <tbody id="growth-body"></tbody>
+                <tfoot id="growth-foot"></tfoot>
+              </table>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-header">
+              <h2>Top 15 — Representatividade nas quedas</h2>
+              <span class="meta">Percentual sobre todas as cidades que caíram</span>
+            </div>
+            <div class="table-wrap">
+              <table class="responsive-table ranking-table">
+                <thead id="decline-head"></thead>
+                <tbody id="decline-body"></tbody>
+                <tfoot id="decline-foot"></tfoot>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="rankings-grid market-rankings" aria-label="Análises de mercado por população">
+          <section class="section">
+            <div class="section-header">
+              <h2>Top 10 — Maior penetração</h2>
+              <span class="meta">Base Brisanet em relação à população</span>
+            </div>
+            <div class="table-wrap">
+              <table class="responsive-table market-ranking-table">
+                <thead id="penetration-head"></thead>
+                <tbody id="penetration-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>Análise por cidade</h2>
+            <span id="city-count" class="meta"></span>
+          </div>
+
+          <div class="filters">
+            <input id="search" class="control" type="search" placeholder="Buscar cidade..." autocomplete="off">
+            <select id="region-filter" class="control" aria-label="Filtrar por regional"></select>
+            <select id="status-filter" class="control" aria-label="Filtrar por status">
+              <option value="">Todos os status</option>
+              <option value="Crescimento">Crescimento</option>
+              <option value="Queda">Queda</option>
+              <option value="Estável">Estável</option>
+            </select>
+          </div>
+
+          <div class="table-wrap">
+            <table class="responsive-table city-analysis-table">
+              <thead id="city-head"></thead>
+              <tbody id="city-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <dialog id="city-detail-dialog" class="city-dialog">
+      <header class="detail-header">
+        <div>
+          <h2 id="detail-city" class="detail-title">Detalhamento da cidade</h2>
+          <p id="detail-subtitle" class="detail-subtitle"></p>
+        </div>
+        <button id="close-city-detail" class="close-button" type="button" aria-label="Fechar">×</button>
+      </header>
+
+      <div class="detail-body">
+        <section id="detail-metrics" class="detail-grid" aria-label="Indicadores da cidade"></section>
+
+        <section id="city-plan-actions" class="city-plan-actions hidden" aria-label="Planos de ação da cidade"></section>
+
+        <section class="detail-section">
+          <div class="detail-section-header city-chart-section-header">
+            <h3>Evolução mensal da base</h3>
+            <div class="detail-chart-controls">
+              <span id="chart-period" class="meta"></span>
+              <select id="city-chart-mode" class="chart-mode-select" aria-label="Forma de análise do gráfico">
+                <option value="general">Crescimento geral</option>
+                <option value="positive-negative">Crescimento positivo x negativo</option>
+              </select>
+            </div>
+          </div>
+          <div id="city-chart" class="chart-container"></div>
+        </section>
+
+        <section class="detail-section">
+          <div class="detail-section-header">
+            <h3>Histórico mensal</h3>
+            <span class="meta">Crescimento contra o mês anterior</span>
+          </div>
+          <div class="table-wrap">
+            <table class="responsive-table history-table">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th class="number">Base</th>
+                  <th class="number">Crescimento</th>
+                  <th class="number">Meta de crescimento</th>
+                  <th class="number">Desvio da meta</th>
+                  <th class="number">Variação (%)</th>
+                </tr>
+              </thead>
+              <tbody id="detail-history-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </dialog>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+      const EXCLUDED_CITIES_STORAGE_KEY = 'mesa-operacional-excluded-cities-v1';
+      const RANKING_LIMIT = 15;
+      window.__appBootstrapLoaded = false;
+      window.__appBootstrapStarted = false;
+      window.__appBootstrapPayload = null;
+      window.__appBootstrapError = null;
+      window.__appAccessGranted = false;
+      const state = {
+        data: null,
+        permissions: {},
+        historyByCity: new Map(),
+        excludedCities: loadExcludedCities(),
+        cityChartMode: 'general',
+        activeCityChart: null,
+        dashboardChartMode: 'general',
+        dashboardTrendPoints: [],
+      };
+      const integerFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+      const percentFormatter = new Intl.NumberFormat('pt-BR', {
+        style: 'percent',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const GOAL_DEFINITIONS = Object.freeze([
+        Object.freeze({ key: 'budget', label: 'Orçamento', detailLabel: 'Meta de orçamento' }),
+        Object.freeze({ key: 'effective', label: 'Efetivado', detailLabel: 'Meta de efetivado' }),
+        Object.freeze({ key: 'installation', label: 'Instalação', detailLabel: 'Meta de instalação' }),
+        Object.freeze({ key: 'growth', label: 'Crescimento', detailLabel: 'Meta de crescimento' }),
+      ]);
+
+      document.getElementById('refresh-button').addEventListener('click', refreshApplication);
+      document.getElementById('download-dashboard-button').addEventListener('click', downloadDashboardPdf);
+      document.getElementById('compare-button').addEventListener('click', compareSelectedPeriods);
+      document.getElementById('swap-periods').addEventListener('click', swapSelectedPeriods);
+      document.getElementById('restore-all-cities').addEventListener('click', restoreAllCities);
+      document.getElementById('search').addEventListener('input', renderCityTable);
+      document.getElementById('region-filter').addEventListener('change', renderCityTable);
+      document.getElementById('status-filter').addEventListener('change', renderCityTable);
+      document.getElementById('close-city-detail').addEventListener('click', closeCityDetail);
+      document.getElementById('city-detail-dialog').addEventListener('click', closeDialogFromBackdrop);
+      document.getElementById('city-chart-mode').addEventListener('change', changeCityChartMode);
+      document.getElementById('dashboard-chart-mode').addEventListener('change', changeDashboardChartMode);
+
+      loadDashboard(false);
+
+      function refreshApplication() {
+        loadDashboard(true, null, true);
+      }
+
+      async function downloadDashboardPdf() {
+        const button = document.getElementById('download-dashboard-button');
+        if (!state.data || document.getElementById('dashboard').classList.contains('hidden')) {
+          showError('Aguarde o carregamento completo do Dashboard.');
+          return;
+        }
+        if (
+          typeof window.html2canvas !== 'function'
+          || !window.jspdf
+          || typeof window.jspdf.jsPDF !== 'function'
+        ) {
+          showError('Não foi possível carregar o gerador de PDF. Atualize a página e tente novamente.');
+          return;
+        }
+
+        const originalLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Gerando PDF...';
+        button.setAttribute('aria-busy', 'true');
+        closeCityDetail();
+
+        try {
+          document.body.classList.add('dashboard-export-mode');
+          if (document.fonts && document.fonts.ready) await document.fonts.ready;
+          await waitForDashboardExportLayout();
+
+          const canvas = await window.html2canvas(document.body, {
+            backgroundColor: '#f6f8fa',
+            logging: false,
+            scale: Math.min(window.devicePixelRatio || 1, 1.5),
+            scrollX: 0,
+            scrollY: 0,
+            useCORS: true,
+            windowWidth: Math.max(1280, document.documentElement.scrollWidth),
+            windowHeight: document.documentElement.scrollHeight,
+          });
+          createDashboardPdf(canvas).save(dashboardExportFileName());
+        } catch (error) {
+          showError(`Não foi possível gerar o PDF: ${normalizeAppError(error)}`);
+        } finally {
+          document.body.classList.remove('dashboard-export-mode');
+          button.disabled = false;
+          button.textContent = originalLabel;
+          button.setAttribute('aria-busy', 'false');
+        }
+      }
+
+      function waitForDashboardExportLayout() {
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+      }
+
+      function createDashboardPdf(canvas) {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4',
+          compress: true,
+        });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 8;
+        const footerHeight = 6;
+        const contentWidth = pageWidth - margin * 2;
+        const contentHeight = pageHeight - margin * 2 - footerHeight;
+        const maximumSliceHeight = Math.floor(canvas.width * contentHeight / contentWidth);
+        const slices = createDashboardPdfSlices(canvas, maximumSliceHeight);
+
+        slices.forEach((slice, index) => {
+          if (index > 0) pdf.addPage('a4', 'landscape');
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = slice.height;
+          const context = pageCanvas.getContext('2d');
+          if (!context) throw new Error('O navegador não conseguiu preparar uma página do PDF.');
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          context.drawImage(
+            canvas,
+            0,
+            slice.start,
+            canvas.width,
+            slice.height,
+            0,
+            0,
+            canvas.width,
+            slice.height
+          );
+
+          const renderedHeight = slice.height * contentWidth / canvas.width;
+          pdf.addImage(
+            pageCanvas.toDataURL('image/jpeg', 0.92),
+            'JPEG',
+            margin,
+            margin,
+            contentWidth,
+            renderedHeight,
+            undefined,
+            'FAST'
+          );
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(8);
+          pdf.setTextColor(89, 99, 110);
+          pdf.text(
+            `Página ${index + 1} de ${slices.length}`,
+            pageWidth - margin,
+            pageHeight - 5,
+            { align: 'right' }
+          );
+        });
+        return pdf;
+      }
+
+      function createDashboardPdfSlices(canvas, maximumSliceHeight) {
+        const scaleY = canvas.height / Math.max(document.documentElement.scrollHeight, 1);
+        const breakpoints = Array.from(document.querySelectorAll(
+          '#dashboard tr, #dashboard .card, #dashboard .section-header, '
+          + '#dashboard .period-picker, #dashboard .excluded-panel, #dashboard .representation-note'
+        ))
+          .map((element) => Math.round((element.getBoundingClientRect().bottom + window.scrollY) * scaleY))
+          .filter((position) => position > 0 && position < canvas.height)
+          .sort((left, right) => left - right);
+        const slices = [];
+        let start = 0;
+
+        while (start < canvas.height) {
+          const idealEnd = Math.min(start + maximumSliceHeight, canvas.height);
+          let end = idealEnd;
+          if (idealEnd < canvas.height) {
+            const minimumEnd = start + Math.floor(maximumSliceHeight * 0.7);
+            const candidates = breakpoints.filter((position) =>
+              position >= minimumEnd && position <= idealEnd - 8
+            );
+            if (candidates.length) end = candidates[candidates.length - 1];
+          }
+          if (end <= start) end = idealEnd;
+          slices.push({ start, height: end - start });
+          start = end;
+        }
+        return slices;
+      }
+
+      function dashboardExportFileName() {
+        const period = state.data && state.data.period ? state.data.period : {};
+        const comparison = [period.currentKey, period.previousKey].filter(Boolean).join('-vs-');
+        const today = new Date();
+        const localDate = [
+          today.getFullYear(),
+          String(today.getMonth() + 1).padStart(2, '0'),
+          String(today.getDate()).padStart(2, '0'),
+        ].join('-');
+        return `mesa-operacional-${comparison || localDate}.pdf`;
+      }
+
+      function loadDashboard(forceRefresh, selectedPeriod, refreshSession) {
+        const period = selectedPeriod || (state.data ? state.data.period : {});
+        closeCityDetail();
+        setLoading(true);
+        window.__appBootstrapStarted = true;
+        if (refreshSession) clearRenderedAccess();
+
+        const runner = google.script.run
+          .withSuccessHandler(handleDashboardSuccess)
+          .withFailureHandler(handleDashboardFailure);
+
+        runner.getAppBootstrap(
+          Boolean(forceRefresh),
+          period.currentKey || '',
+          period.previousKey || ''
+        );
+      }
+
+      function handleDashboardSuccess(result) {
+        const data = result.dashboard;
+        state.data = data;
+        state.permissions = result.permissions || {};
+        state.historyByCity = new Map(
+          (data.cityHistories || []).map((history) => [history.city, history])
+        );
+        window.__appBootstrapLoaded = true;
+        window.__appBootstrapStarted = false;
+        window.__appBootstrapPayload = result;
+        window.__appBootstrapError = null;
+        window.__appAccessGranted = true;
+        window.dispatchEvent(new CustomEvent('app-bootstrap-loaded', {
+          detail: result.plans,
+        }));
+        renderDashboard();
+        showAuthorizedView();
+        setLoading(false);
+      }
+
+      function handleDashboardFailure(error) {
+        const message = normalizeAppError(error);
+        window.__appBootstrapLoaded = false;
+        window.__appBootstrapStarted = false;
+        window.__appBootstrapPayload = null;
+        window.__appBootstrapError = message;
+        window.__appAccessGranted = false;
+        clearRenderedAccess();
+        window.dispatchEvent(new CustomEvent('app-bootstrap-failed', {
+          detail: message,
+        }));
+        showAccessDenied(message);
+        setLoading(false);
+      }
+
+      function clearRenderedAccess() {
+        state.data = null;
+        state.permissions = {};
+        state.historyByCity.clear();
+        document.getElementById('app-nav').classList.add('hidden');
+        document.getElementById('dashboard-view').classList.add('hidden');
+        document.getElementById('plans-view').classList.add('hidden');
+        const accessState = document.getElementById('access-state');
+        accessState.classList.add('access-state-loading');
+        accessState.classList.remove('hidden');
+        document.getElementById('access-state-icon').textContent = '…';
+        document.getElementById('access-state-title').textContent = 'Validando acesso';
+        document.getElementById('access-state-message').textContent = 'Atualizando dados e permissões do usuário.';
+        window.dispatchEvent(new CustomEvent('app-bootstrap-refreshing'));
+      }
+
+      function showAuthorizedView() {
+        const plansActive = window.__activeAppView === 'plans';
+        document.getElementById('app-nav').classList.remove('hidden');
+        const accessState = document.getElementById('access-state');
+        accessState.classList.remove('access-state-loading');
+        accessState.classList.add('hidden');
+        document.getElementById('dashboard-view').classList.toggle('hidden', plansActive);
+        document.getElementById('plans-view').classList.toggle('hidden', !plansActive);
+      }
+
+      function showAccessDenied(message) {
+        const accessState = document.getElementById('access-state');
+        document.getElementById('period-label').textContent = 'Acesso não autorizado';
+        document.getElementById('access-state-icon').textContent = '!';
+        document.getElementById('access-state-title').textContent = 'Acesso indisponível';
+        document.getElementById('access-state-message').textContent = message;
+        accessState.classList.remove('access-state-loading', 'hidden');
+      }
+
+      function normalizeAppError(error) {
+        const message = error && error.message ? error.message : String(error || 'Falha ao validar o acesso.');
+        return message.replace(/^Error:\s*/i, '').trim();
+      }
+
+      function renderDashboard() {
+        const data = state.data;
+        document.getElementById('period-label').textContent =
+          `${data.period.currentLabel} x ${data.period.previousLabel} • atualizado em ${data.updatedAt}`;
+
+        renderPeriodSelector(data.availableMonths, data.period);
+        renderRegionFilter(data.regions);
+        renderAnalysis();
+      }
+
+      function renderAnalysis() {
+        if (!state.data) return;
+
+        const cities = getIncludedCities();
+        const allGrowth = cities
+          .filter((record) => record.difference > 0)
+          .sort((a, b) => b.difference - a.difference || a.city.localeCompare(b.city, 'pt-BR'));
+        const allDecline = cities
+          .filter((record) => record.difference < 0)
+          .sort((a, b) => a.difference - b.difference || a.city.localeCompare(b.city, 'pt-BR'));
+        const growth = allGrowth.slice(0, RANKING_LIMIT);
+        const decline = allDecline.slice(0, RANKING_LIMIT);
+
+        const summary = createClientSummary(cities);
+        renderSummary(summary, state.data.period);
+        renderDashboardTrendChart();
+        renderRepresentationNote(summary);
+        renderRanking('growth', growth, allGrowth, state.data.period, summary);
+        renderRanking('decline', decline, allDecline, state.data.period, summary);
+        renderMarketRankings(cities);
+        renderExcludedCities();
+        renderCityTable();
+      }
+
+      function getIncludedCities() {
+        return state.data.cities.filter((record) => !state.excludedCities.has(record.city));
+      }
+
+      function createClientSummary(records) {
+        const previous = sumRecords(records, 'previous');
+        const current = sumRecords(records, 'current');
+        const difference = current - previous;
+        const cityCount = records.length;
+        const populationRecords = records.filter(hasValidPopulation);
+        const population = sumRecords(populationRecords, 'population');
+        const populationBase = sumRecords(populationRecords, 'current');
+        const goals = records.reduce((totals, record) => {
+          const cityGoals = record.goals || {};
+          let hasAnyGoal = false;
+          GOAL_DEFINITIONS.forEach(({ key }) => {
+            if (!hasGoalValue(cityGoals[key])) return;
+            totals[key] += Number(cityGoals[key]);
+            if (!isGoalValidated(record, key)) totals.pendingCount += 1;
+            hasAnyGoal = true;
+          });
+          if (hasAnyGoal) totals.cityCount += 1;
+          return totals;
+        }, {
+          budget: 0,
+          effective: 0,
+          installation: 0,
+          growth: 0,
+          cityCount: 0,
+          pendingCount: 0,
+        });
+        const movement = records.reduce((totals, record) => {
+          if (record.difference > 0) {
+            totals.growthCount += 1;
+            totals.growthTotal += record.difference;
+          } else if (record.difference < 0) {
+            totals.declineCount += 1;
+            totals.declineTotal += record.difference;
+          }
+          return totals;
+        }, { growthCount: 0, declineCount: 0, growthTotal: 0, declineTotal: 0 });
+
+        return {
+          cityCount,
+          previous,
+          current,
+          difference,
+          percentage: previous !== 0 ? difference / previous : 0,
+          growthTotal: movement.growthTotal,
+          declineTotal: movement.declineTotal,
+          growthCount: movement.growthCount,
+          declineCount: movement.declineCount,
+          stableCount: cityCount - movement.growthCount - movement.declineCount,
+          growthCityPercentage: cityCount ? movement.growthCount / cityCount : 0,
+          declineCityPercentage: cityCount ? movement.declineCount / cityCount : 0,
+          population,
+          populationBase,
+          populationCityCount: populationRecords.length,
+          penetration: population > 0 ? populationBase / population : null,
+          goals,
+        };
+      }
+
+      function hasGoalValue(value) {
+        return Number.isFinite(Number(value)) && value !== null && value !== '';
+      }
+
+      function isGoalValidated(record, goalKey) {
+        return !record.goalValidation || record.goalValidation[goalKey] !== false;
+      }
+
+      function canManageGoalValidation() {
+        return Boolean(state.permissions && state.permissions.administer);
+      }
+
+      function hasValidPopulation(record) {
+        return Number.isFinite(Number(record.population)) && Number(record.population) > 0;
+      }
+
+      function calculatePenetration(record) {
+        return hasValidPopulation(record) ? Number(record.current) / Number(record.population) : null;
+      }
+
+      function createClientRankingTotals(records) {
+        const previous = sumRecords(records, 'previous');
+        const current = sumRecords(records, 'current');
+        const difference = current - previous;
+
+        return {
+          previous,
+          current,
+          difference,
+          percentage: previous !== 0 ? difference / previous : 0,
+        };
+      }
+
+      function sumRecords(records, property) {
+        return records.reduce((total, record) => total + record[property], 0);
+      }
+
+      function renderPeriodSelector(months, period) {
+        renderMonthOptions('current-month', months, period.currentKey);
+        renderMonthOptions('previous-month', months, period.previousKey);
+      }
+
+      function renderMonthOptions(elementId, months, selectedMonth) {
+        const select = document.getElementById(elementId);
+        select.replaceChildren(...months.map((month) => createOption(month.key, month.label)));
+        select.value = selectedMonth;
+      }
+
+      function compareSelectedPeriods() {
+        const currentKey = document.getElementById('current-month').value;
+        const previousKey = document.getElementById('previous-month').value;
+
+        if (currentKey === previousKey) {
+          showError('Selecione dois meses diferentes para realizar a comparação.');
+          return;
+        }
+
+        loadDashboard(false, { currentKey, previousKey });
+      }
+
+      function swapSelectedPeriods() {
+        const currentSelect = document.getElementById('current-month');
+        const previousSelect = document.getElementById('previous-month');
+        const currentKey = currentSelect.value;
+
+        currentSelect.value = previousSelect.value;
+        previousSelect.value = currentKey;
+        compareSelectedPeriods();
+      }
+
+      function renderSummary(summary, period) {
+        const cards = [
+          { label: `Base — ${period.previousLabel}`, value: formatInteger(summary.previous) },
+          { label: `Base — ${period.currentLabel}`, value: formatInteger(summary.current) },
+          {
+            label: 'Crescimento total',
+            value: `${formatSignedInteger(summary.difference)} (${formatPercent(summary.percentage)})`,
+            tone: toneFromNumber(summary.difference),
+          },
+          {
+            label: 'Movimento das cidades',
+            movement: [
+              {
+                label: 'Crescimento positivo',
+                value: formatInteger(summary.growthCount),
+                percentage: formatPercent(summary.growthCityPercentage),
+                tone: 'positive',
+              },
+              {
+                label: 'Crescimento negativo',
+                value: formatInteger(summary.declineCount),
+                percentage: formatPercent(summary.declineCityPercentage),
+                tone: 'negative',
+              },
+            ],
+          },
+          {
+            label: 'Mercado analisado',
+            market: [
+              {
+                label: 'População total',
+                value: formatInteger(summary.population),
+                helper: `${formatInteger(summary.populationCityCount)} cidades com população válida`,
+              },
+              {
+                label: 'Base Brisanet analisada',
+                value: formatInteger(summary.populationBase),
+                helper: 'Base das cidades com população válida',
+              },
+              {
+                label: 'Penetração geral',
+                value: formatNullablePercent(summary.penetration),
+                helper: 'Base analisada ÷ população total',
+                tone: 'positive',
+              },
+            ],
+          },
+          {
+            label: `Metas das cidades — ${period.currentLabel}`,
+            className: 'goals-summary-card',
+            market: GOAL_DEFINITIONS.map((definition, index) => ({
+              label: definition.label,
+              value: formatInteger(summary.goals[definition.key]),
+              helper: index === 0 && summary.goals.pendingCount
+                ? `${formatInteger(summary.goals.pendingCount)} metas não validadas`
+                : index === 0 ? `${formatInteger(summary.goals.cityCount)} cidades com meta`
+                : 'Meta mensal consolidada',
+            })),
+          },
+        ];
+
+        const container = document.getElementById('summary');
+        const cityMeta = document.createElement('p');
+        cityMeta.className = 'summary-meta';
+        cityMeta.textContent = `${formatInteger(summary.cityCount)} cidades analisadas • ${formatInteger(summary.stableCount)} estáveis`;
+        container.replaceChildren(cityMeta, ...cards.map(createCard));
+      }
+
+      function createCard(card) {
+        const element = document.createElement('article');
+        element.className = `card ${card.className || ''}`.trim();
+
+        const label = document.createElement('span');
+        label.className = 'card-label';
+        label.textContent = card.label;
+
+        if (card.market) {
+          element.classList.add('market-summary-card');
+          const market = document.createElement('div');
+          market.className = 'market-summary-grid';
+          card.market.forEach((item) => {
+            const metric = document.createElement('div');
+            metric.className = 'market-summary-item';
+            const value = document.createElement('strong');
+            value.className = `market-summary-value ${item.tone || ''}`.trim();
+            value.textContent = item.value;
+            const metricLabel = document.createElement('span');
+            metricLabel.className = 'market-summary-label';
+            metricLabel.textContent = item.label;
+            const helper = document.createElement('span');
+            helper.className = 'market-summary-helper';
+            helper.textContent = item.helper;
+            metric.append(value, metricLabel, helper);
+            market.appendChild(metric);
+          });
+          element.append(label, market);
+          return element;
+        }
+
+        if (card.movement) {
+          const movement = document.createElement('div');
+          movement.className = 'city-movement-grid';
+          card.movement.forEach((item) => {
+            const metric = document.createElement('div');
+            metric.className = 'city-movement-item';
+            const value = document.createElement('strong');
+            value.className = `city-movement-value ${item.tone}`;
+            value.textContent = item.value;
+            const metricLabel = document.createElement('span');
+            metricLabel.className = 'city-movement-label';
+            metricLabel.textContent = item.label;
+            const helper = document.createElement('span');
+            helper.className = 'city-movement-helper';
+            helper.textContent = `${item.percentage} do total`;
+            metric.append(value, metricLabel, helper);
+            movement.appendChild(metric);
+          });
+          element.append(label, movement);
+          return element;
+        }
+
+        const value = document.createElement('strong');
+        value.className = `card-value ${card.tone || ''}`.trim();
+        value.textContent = card.value;
+
+        element.append(label, value);
+        if (card.helper) {
+          const helper = document.createElement('span');
+          helper.className = 'card-helper';
+          helper.textContent = card.helper;
+          element.appendChild(helper);
+        }
+        return element;
+      }
+
+      function renderDashboardTrendChart() {
+        state.dashboardTrendPoints = createDashboardTrendPoints();
+        renderActiveDashboardTrendChart();
+      }
+
+      function changeDashboardChartMode(event) {
+        state.dashboardChartMode = event.target.value === 'positive-negative'
+          ? 'positive-negative'
+          : 'general';
+        renderActiveDashboardTrendChart();
+      }
+
+      function renderActiveDashboardTrendChart() {
+        const points = state.dashboardTrendPoints;
+        const showMovements = state.dashboardChartMode === 'positive-negative';
+        renderDashboardChartHeader(showMovements);
+        if (showMovements) {
+          renderPositiveNegativeChart(points, points, 'base geral', {
+            chartId: 'dashboard-trend-chart',
+            periodLabelId: 'dashboard-trend-period',
+            svgClass: 'dashboard-trend-svg',
+            height: 410,
+            minimumWidth: 900,
+            emptyMessage: 'Sem crescimento positivo ou negativo na base geral.',
+            growthGoals: createAggregatedGrowthGoals(),
+          });
+          return;
+        }
+        renderDashboardGeneralTrendChart(points);
+      }
+
+      function renderDashboardChartHeader(showMovements) {
+        document.getElementById('dashboard-trend-title').textContent = showMovements
+          ? 'Crescimento mensal — positivo x negativo'
+          : 'Evolução da base e perdas mensais';
+        const legend = document.getElementById('dashboard-chart-legend');
+        const items = showMovements
+          ? [
+              ['dashboard-chart-legend-positive', 'Crescimento positivo'],
+              ['dashboard-chart-legend-negative', 'Crescimento negativo'],
+              ['dashboard-chart-legend-goal', 'Meta de crescimento'],
+            ]
+          : [
+              ['dashboard-chart-legend-line', 'Base total'],
+              ['dashboard-chart-legend-bar', 'Perda no mês'],
+            ];
+        legend.replaceChildren(...items.map(([className, labelText]) => {
+          const item = document.createElement('span');
+          item.className = 'dashboard-chart-legend-item';
+          const indicator = document.createElement('span');
+          indicator.className = className;
+          indicator.setAttribute('aria-hidden', 'true');
+          item.append(indicator, document.createTextNode(labelText));
+          return item;
+        }));
+      }
+
+      function renderDashboardGeneralTrendChart(points) {
+        const chart = document.getElementById('dashboard-trend-chart');
+        const periodLabel = document.getElementById('dashboard-trend-period');
+        if (!points.length) {
+          chart.replaceChildren(createEmptyMessage('Sem histórico mensal disponível.'));
+          periodLabel.textContent = '';
+          return;
+        }
+
+        const width = 1120;
+        const height = 410;
+        const margin = { top: 68, right: 82, bottom: 52, left: 92 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const baseValues = points.map((point) => point.base);
+        const baseMinimum = Math.min(...baseValues);
+        const baseMaximum = Math.max(...baseValues);
+        const baseRange = baseMaximum - baseMinimum;
+        const basePadding = baseRange > 0 ? baseRange * 0.14 : Math.max(baseMaximum * 0.01, 1);
+        const baseAxisMinimum = Math.max(0, baseMinimum - basePadding);
+        const baseAxisMaximum = baseMaximum + basePadding;
+        const lossAxisMaximum = niceChartMaximum(Math.max(...points.map((point) => point.loss), 1));
+        const xForIndex = (index) => margin.left + (
+          points.length === 1 ? plotWidth / 2 : index / (points.length - 1) * plotWidth
+        );
+        const yForBase = (value) => margin.top + (
+          (baseAxisMaximum - value) / Math.max(baseAxisMaximum - baseAxisMinimum, 1)
+        ) * plotHeight;
+        const yForLoss = (value) => margin.top + (1 - value / lossAxisMaximum) * plotHeight;
+        const barWidth = Math.min(48, plotWidth / Math.max(points.length * 2.4, 1));
+        const svg = createSvgElement('svg', {
+          class: 'dashboard-trend-svg',
+          viewBox: `0 0 ${width} ${height}`,
+          role: 'img',
+          'aria-label': 'Evolução mensal da base total e das perdas mensais',
+        });
+        const tooltip = document.createElement('div');
+        tooltip.className = 'chart-tooltip hidden';
+
+        appendDashboardChartGradients(svg);
+        appendDashboardChartAxes(
+          svg,
+          points,
+          margin,
+          plotWidth,
+          plotHeight,
+          baseAxisMinimum,
+          baseAxisMaximum,
+          lossAxisMaximum,
+          xForIndex
+        );
+
+        const baseCoordinates = points.map((point, index) => ({
+          x: xForIndex(index),
+          y: yForBase(point.base),
+        }));
+        const areaPath = [
+          `M ${baseCoordinates[0].x} ${margin.top + plotHeight}`,
+          ...baseCoordinates.map((coordinate) => `L ${coordinate.x} ${coordinate.y}`),
+          `L ${baseCoordinates[baseCoordinates.length - 1].x} ${margin.top + plotHeight}`,
+          'Z',
+        ].join(' ');
+        svg.appendChild(createSvgElement('path', { class: 'dashboard-base-area', d: areaPath }));
+
+        // Mesmo critério do gráfico de cidade: com muitos meses, evita rótulo
+        // numérico em cada barra/ponto (que se sobrepõem) e mostra só nas
+        // extremidades, deixando o tooltip cobrir o restante.
+        const showAllLabels = points.length <= 8;
+
+        const bars = points.map((point, index) => {
+          const x = xForIndex(index);
+          const y = yForLoss(point.loss);
+          const isEdge = index === 0 || index === points.length - 1;
+          const bar = createSvgElement('rect', {
+            class: 'dashboard-loss-bar',
+            x: x - barWidth / 2,
+            y,
+            width: barWidth,
+            height: Math.max(margin.top + plotHeight - y, 0),
+            rx: 4,
+          });
+          svg.appendChild(bar);
+          if (point.loss > 0 && (showAllLabels || isEdge)) {
+            const label = createSvgElement('text', {
+              class: 'chart-value-label dashboard-loss-label',
+              x,
+              y: y - 9,
+              'text-anchor': 'middle',
+            });
+            label.textContent = formatInteger(point.loss);
+            svg.appendChild(label);
+          }
+          return bar;
+        });
+
+        svg.appendChild(createSvgElement('polyline', {
+          class: 'dashboard-base-line',
+          points: baseCoordinates.map((coordinate) => `${coordinate.x},${coordinate.y}`).join(' '),
+        }));
+
+        points.forEach((point, index) => {
+          const coordinate = baseCoordinates[index];
+          const isEdge = index === 0 || index === points.length - 1;
+          const circle = createSvgElement('circle', {
+            class: 'dashboard-base-point',
+            cx: coordinate.x,
+            cy: coordinate.y,
+            r: 5,
+          });
+          svg.appendChild(circle);
+
+          if (showAllLabels || isEdge) {
+            const baseLabel = createSvgElement('text', {
+              class: 'chart-value-label',
+              x: coordinate.x,
+              y: coordinate.y - 13,
+              'text-anchor': 'middle',
+            });
+            baseLabel.textContent = formatInteger(point.base);
+            svg.appendChild(baseLabel);
+          }
+
+          const hitWidth = plotWidth / Math.max(points.length - 1, 1);
+          const hitArea = createSvgElement('rect', {
+            class: 'dashboard-chart-hit-area',
+            x: coordinate.x - hitWidth / 2,
+            y: margin.top,
+            width: hitWidth,
+            height: plotHeight,
+            tabindex: 0,
+            role: 'button',
+            'aria-label': `${point.label}, base ${formatInteger(point.base)}, perda ${formatInteger(point.loss)}`,
+          });
+          const showTooltip = (event) => showDashboardTrendTooltip(
+            chart,
+            tooltip,
+            event.currentTarget,
+            circle,
+            bars[index],
+            point
+          );
+          const hideTooltip = () => hideDashboardTrendTooltip(tooltip, circle, bars[index]);
+          hitArea.addEventListener('pointerenter', showTooltip);
+          hitArea.addEventListener('pointerleave', hideTooltip);
+          hitArea.addEventListener('focus', showTooltip);
+          hitArea.addEventListener('blur', hideTooltip);
+          svg.appendChild(hitArea);
+        });
+
+        chart.replaceChildren(svg, tooltip);
+        periodLabel.textContent = `${points[0].label} a ${points[points.length - 1].label}`;
+      }
+
+      function createDashboardTrendPoints() {
+        const totals = new Map();
+        (state.data.cityHistories || [])
+          .filter((history) => !state.excludedCities.has(history.city))
+          .forEach((history) => {
+            (history.points || []).forEach((point) => {
+              if (point.value === null || point.value === '' || !Number.isFinite(Number(point.value))) return;
+              const current = totals.get(point.monthKey) || { label: point.label, base: 0 };
+              current.base += Number(point.value);
+              totals.set(point.monthKey, current);
+            });
+          });
+
+        return Array.from(totals.entries())
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([monthKey, point], index, entries) => {
+            const previousBase = index > 0 ? entries[index - 1][1].base : null;
+            const difference = previousBase === null ? null : point.base - previousBase;
+            return {
+              monthKey,
+              label: point.label,
+              base: point.base,
+              currentMonth: monthKey,
+              currentLabel: point.label,
+              previousValue: previousBase,
+              currentValue: point.base,
+              difference,
+              percentage: difference !== null && previousBase !== 0 ? difference / previousBase : null,
+              loss: difference !== null ? Math.max(-difference, 0) : 0,
+            };
+          });
+      }
+
+      function createAggregatedGrowthGoals() {
+        const growthGoals = {};
+        const histories = (state.data.cityHistories || []).filter((history) =>
+          !state.excludedCities.has(history.city)
+        );
+
+        for (let month = 1; month <= 12; month += 1) {
+          const monthKey = String(month).padStart(2, '0');
+          const values = histories
+            .map((history) => history.growthGoals && history.growthGoals[monthKey])
+            .filter(hasGoalValue)
+            .map(Number);
+          growthGoals[monthKey] = values.length
+            ? values.reduce((total, value) => total + value, 0)
+            : null;
+        }
+        return growthGoals;
+      }
+
+      function appendDashboardChartGradients(svg) {
+        const definitions = createSvgElement('defs');
+        const gradients = [
+          {
+            id: 'dashboard-base-line-gradient',
+            attributes: { x1: '0%', y1: '0%', x2: '100%', y2: '0%' },
+            stops: [['0%', '#54aeff', 1], ['55%', '#0969da', 1], ['100%', '#8250df', 1]],
+          },
+          {
+            id: 'dashboard-base-area-gradient',
+            attributes: { x1: '0%', y1: '0%', x2: '0%', y2: '100%' },
+            stops: [['0%', '#54aeff', 0.28], ['100%', '#54aeff', 0.02]],
+          },
+          {
+            id: 'dashboard-loss-gradient',
+            attributes: { x1: '0%', y1: '0%', x2: '0%', y2: '100%' },
+            stops: [['0%', '#ff8182', 1], ['100%', '#cf222e', 1]],
+          },
+        ];
+        gradients.forEach((gradient) => {
+          const element = createSvgElement('linearGradient', { id: gradient.id, ...gradient.attributes });
+          gradient.stops.forEach(([offset, color, opacity]) => {
+            element.appendChild(createSvgElement('stop', {
+              offset,
+              'stop-color': color,
+              'stop-opacity': opacity,
+            }));
+          });
+          definitions.appendChild(element);
+        });
+        svg.appendChild(definitions);
+      }
+
+      function appendDashboardChartAxes(
+        svg,
+        points,
+        margin,
+        plotWidth,
+        plotHeight,
+        baseMinimum,
+        baseMaximum,
+        lossMaximum,
+        xForIndex
+      ) {
+        const gridLines = 4;
+        for (let index = 0; index <= gridLines; index += 1) {
+          const ratio = index / gridLines;
+          const y = margin.top + ratio * plotHeight;
+          const baseValue = baseMaximum - ratio * (baseMaximum - baseMinimum);
+          const lossValue = lossMaximum - ratio * lossMaximum;
+          svg.appendChild(createSvgElement('line', {
+            class: 'chart-grid-line',
+            x1: margin.left,
+            x2: margin.left + plotWidth,
+            y1: y,
+            y2: y,
+          }));
+          appendDashboardAxisLabel(svg, margin.left - 10, y + 4, formatInteger(Math.round(baseValue)), 'end');
+          appendDashboardAxisLabel(svg, margin.left + plotWidth + 10, y + 4, formatInteger(Math.round(lossValue)), 'start');
+        }
+
+        // Mesmo critério de espaçamento usado no gráfico de evolução por
+        // cidade: com muitos meses, mostra só ~7 rótulos (sempre incluindo o
+        // primeiro e o último) em vez de lotar o eixo.
+        const labelStep = Math.max(1, Math.ceil(points.length / 7));
+        points.forEach((point, index) => {
+          const isEdge = index === 0 || index === points.length - 1;
+          if (!isEdge && index % labelStep !== 0) return;
+          appendDashboardAxisLabel(svg, xForIndex(index), margin.top + plotHeight + 28, formatMonthShort(point.monthKey), 'middle');
+        });
+
+        const leftTitle = createSvgElement('text', {
+          class: 'chart-axis-title',
+          x: margin.left,
+          y: 27,
+          'text-anchor': 'start',
+        });
+        leftTitle.textContent = 'Base total';
+        svg.appendChild(leftTitle);
+        const rightTitle = createSvgElement('text', {
+          class: 'chart-axis-title',
+          x: margin.left + plotWidth,
+          y: 27,
+          'text-anchor': 'end',
+        });
+        rightTitle.textContent = 'Perda no mês';
+        svg.appendChild(rightTitle);
+      }
+
+      function appendDashboardAxisLabel(svg, x, y, value, anchor) {
+        const label = createSvgElement('text', {
+          class: 'chart-axis-label',
+          x,
+          y,
+          'text-anchor': anchor,
+        });
+        label.textContent = value;
+        svg.appendChild(label);
+      }
+
+      function niceChartMaximum(value) {
+        if (!Number.isFinite(value) || value <= 0) return 1;
+        const magnitude = 10 ** Math.floor(Math.log10(value));
+        const normalized = value / magnitude;
+        const factor = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10;
+        return factor * magnitude;
+      }
+
+      function showDashboardTrendTooltip(chart, tooltip, target, circle, bar, point) {
+        const title = document.createElement('strong');
+        title.className = 'chart-tooltip-title';
+        title.textContent = point.label;
+        const rows = [
+          createChartTooltipRow('Base total', formatInteger(point.base)),
+          createChartTooltipRow('Perda no mês', point.loss > 0 ? formatInteger(point.loss) : 'Sem perda'),
+          createChartTooltipRow(
+            'Crescimento mensal',
+            point.difference === null ? 'Primeiro mês' : formatSignedInteger(point.difference)
+          ),
+          createChartTooltipRow(
+            'Variação',
+            point.percentage === null ? '—' : formatSignedPercent(point.percentage)
+          ),
+        ];
+        tooltip.replaceChildren(title, ...rows);
+        tooltip.classList.remove('hidden');
+        circle.classList.add('dashboard-base-point-active');
+        bar.classList.add('dashboard-loss-bar-active');
+
+        const chartRect = chart.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const pointX = targetRect.left + targetRect.width / 2 - chartRect.left + chart.scrollLeft;
+        const pointY = targetRect.top - chartRect.top + chart.scrollTop;
+        const minimumX = chart.scrollLeft + 105;
+        const maximumX = chart.scrollLeft + chart.clientWidth - 105;
+        tooltip.style.left = `${Math.min(Math.max(pointX, minimumX), maximumX)}px`;
+        tooltip.style.top = `${pointY + 24}px`;
+        tooltip.classList.add('chart-tooltip-below');
+      }
+
+      function hideDashboardTrendTooltip(tooltip, circle, bar) {
+        tooltip.classList.add('hidden');
+        tooltip.classList.remove('chart-tooltip-below');
+        circle.classList.remove('dashboard-base-point-active');
+        bar.classList.remove('dashboard-loss-bar-active');
+      }
+
+      function renderRepresentationNote(summary) {
+        document.getElementById('movement-equation').textContent =
+          `Saldo: ${formatSignedInteger(summary.growthTotal)} ${formatSignedInteger(summary.declineTotal)} = ${formatSignedInteger(summary.difference)}`;
+      }
+
+      function renderRanking(prefix, rows, groupRows, period, summary) {
+        const head = document.getElementById(`${prefix}-head`);
+        const body = document.getElementById(`${prefix}-body`);
+        const foot = document.getElementById(`${prefix}-foot`);
+
+        head.replaceChildren(createHeaderRow(period, prefix));
+        const bodyRows = rows.length
+          ? rows.map((row, index) => createDataRow(row, index + 1, period, summary))
+          : [createEmptyRow(8, 'Nenhuma cidade disponível neste ranking.')];
+        body.replaceChildren(...bodyRows);
+        foot.replaceChildren(...createRankingSummaryRows(prefix, rows, groupRows));
+      }
+
+      function createHeaderRow(period, prefix) {
+        const row = document.createElement('tr');
+        const representationLabel = prefix === 'growth'
+          ? 'Representatividade na alta'
+          : 'Representatividade na queda';
+        const representationHelp = prefix === 'growth'
+          ? 'Percentual da alta desta cidade sobre a soma das altas de todas as cidades.'
+          : 'Percentual da queda desta cidade sobre a soma das quedas de todas as cidades.';
+        [
+          { label: 'Pos.', help: 'Posição da cidade no ranking, ordenada pela maior movimentação.' },
+          { label: 'Cidade', help: 'Cidade considerada na comparação entre os dois meses.' },
+          { label: 'Regional', help: 'Regional responsável pela cidade.' },
+          { label: period.previousLabel, help: 'Base ativa da cidade no mês usado como referência.' },
+          { label: period.currentLabel, help: 'Base ativa da cidade no mês analisado.' },
+          { label: 'Crescimento', help: 'Base do mês analisado menos a base do mês de referência. Pode ser positivo ou negativo.' },
+          { label: 'Variação (%)', help: 'Crescimento dividido pela base do mês de referência.' },
+          { label: representationLabel, help: representationHelp },
+        ].forEach((column, index) => appendExplainedHeader(
+          row,
+          column,
+          index >= 3 ? 'number' : index === 1 ? 'sticky-city-column' : ''
+        ));
+        return row;
+      }
+
+      function appendExplainedHeader(row, column, className) {
+        const cell = appendCell(row, 'th', '', `explained-header ${className || ''}`.trim());
+        cell.title = column.help;
+        cell.setAttribute('aria-label', `${column.label}. ${column.help}`);
+        const label = document.createElement('span');
+        label.textContent = column.label;
+        const help = document.createElement('span');
+        help.className = 'column-help';
+        help.textContent = 'ⓘ';
+        help.setAttribute('aria-hidden', 'true');
+        cell.append(label, help);
+        return cell;
+      }
+
+      function createDataRow(record, position, period, summary) {
+        const row = document.createElement('tr');
+        const representation = createRepresentationMetrics(record, summary);
+        appendCell(row, 'td', position, 'number');
+        appendCityLinkCell(row, record);
+        appendCell(row, 'td', record.regional);
+        appendCell(row, 'td', formatInteger(record.previous), 'number');
+        appendCell(row, 'td', formatInteger(record.current), 'number');
+        appendCell(row, 'td', formatSignedInteger(record.difference), `number ${toneFromNumber(record.difference)}`);
+        appendCell(row, 'td', formatPercent(record.percentage), `number ${toneFromNumber(record.percentage)}`);
+        appendRepresentationCell(row, representation, record);
+        applyMobileLabels(row, [
+          'Posição', 'Cidade', 'Regional', period.previousLabel, period.currentLabel,
+          'Crescimento', 'Variação (%)', record.difference > 0
+            ? 'Representatividade na alta'
+            : 'Representatividade na queda',
+        ]);
+        return row;
+      }
+
+      function createRankingSummaryRows(prefix, topRows, groupRows) {
+        const topTotals = createClientRankingTotals(topRows);
+        const otherRows = groupRows.slice(topRows.length);
+        const otherTotals = createClientRankingTotals(otherRows);
+        const groupTotals = createClientRankingTotals(groupRows);
+        const groupMovement = Math.abs(groupTotals.difference);
+        const topShare = groupMovement ? Math.abs(topTotals.difference) / groupMovement : 0;
+        const otherShare = groupMovement ? Math.abs(otherTotals.difference) / groupMovement : 0;
+        const groupLabel = prefix === 'growth' ? 'Total das altas' : 'Total das quedas';
+
+        return [
+          createRankingSummaryRow(`Top ${Math.min(RANKING_LIMIT, groupRows.length)} cidades`, topTotals.difference, topShare),
+          createRankingSummaryRow(`Outras ${otherRows.length} cidades`, otherTotals.difference, otherShare),
+          createRankingSummaryRow(groupLabel, groupTotals.difference, groupMovement ? 1 : 0, true),
+        ];
+      }
+
+      function createRankingSummaryRow(labelText, difference, share, isTotal) {
+        const row = document.createElement('tr');
+        row.className = `mobile-total-row ranking-summary-row${isTotal ? ' ranking-summary-total' : ''}`;
+        const label = appendCell(row, 'td', labelText);
+        label.colSpan = 5;
+        label.dataset.label = 'Resumo';
+        const differenceCell = appendCell(
+          row,
+          'td',
+          formatSignedInteger(difference),
+          `number ${toneFromNumber(difference)}`
+        );
+        differenceCell.dataset.label = 'Crescimento';
+        const spacer = appendCell(row, 'td', '—', 'number');
+        spacer.dataset.label = 'Variação (%)';
+        const shareCell = appendCell(row, 'td', formatPercent(share), 'number');
+        shareCell.dataset.label = 'Representatividade';
+        return row;
+      }
+
+      function appendRepresentationCell(row, representation, record) {
+        const groupCell = appendCell(row, 'td', formatPercent(representation.groupShare), 'number');
+        groupCell.title = record.difference > 0
+          ? 'Representatividade no total de altas'
+          : record.difference < 0 ? 'Representatividade no total de quedas' : 'Sem movimentação';
+      }
+
+      function createRepresentationMetrics(record, summary) {
+        const difference = Number(record.difference) || 0;
+        const groupTotal = difference > 0
+          ? summary.growthTotal
+          : difference < 0 ? Math.abs(summary.declineTotal) : 0;
+        return {
+          groupShare: groupTotal ? Math.abs(difference) / groupTotal : 0,
+          groupTotal,
+        };
+      }
+
+      function renderMarketRankings(records) {
+        const validRecords = records.filter(hasValidPopulation);
+        const penetrationRows = [...validRecords]
+          .sort((left, right) =>
+            calculatePenetration(right) - calculatePenetration(left)
+            || right.current - left.current
+            || left.city.localeCompare(right.city, 'pt-BR')
+          )
+          .slice(0, 10);
+        document.getElementById('penetration-head').replaceChildren(createMarketRankingHeader());
+        document.getElementById('penetration-body').replaceChildren(
+          ...(penetrationRows.length
+            ? penetrationRows.map(createMarketRankingRow)
+            : [createEmptyRow(6, 'Nenhuma cidade possui população válida.')])
+        );
+      }
+
+      function createMarketRankingHeader() {
+        const row = document.createElement('tr');
+        [
+          { label: 'Cidade', help: 'Cidade considerada na análise.' },
+          { label: 'Regional', help: 'Regional responsável pela cidade.' },
+          { label: 'População', help: 'População informada para a cidade na aba Dados.' },
+          { label: 'Base Brisanet', help: 'Base da cidade no mês analisado.' },
+          { label: 'Penetração', help: 'Base Brisanet dividida pela população da cidade.' },
+          { label: 'Crescimento', help: 'Base do mês analisado menos a base do mês de referência.' },
+        ].forEach((column, index) => appendExplainedHeader(
+          row,
+          column,
+          index >= 2 ? 'number' : index === 0 ? 'sticky-city-column' : ''
+        ));
+        return row;
+      }
+
+      function createMarketRankingRow(record) {
+        const row = document.createElement('tr');
+        appendCityLinkCell(row, record);
+        appendCell(row, 'td', record.regional);
+        appendCell(row, 'td', formatInteger(record.population), 'number');
+        appendCell(row, 'td', formatInteger(record.current), 'number');
+        appendCell(row, 'td', formatNullablePercent(calculatePenetration(record)), 'number');
+        appendCell(
+          row,
+          'td',
+          formatSignedInteger(record.difference),
+          `number ${toneFromNumber(record.difference)}`
+        );
+        applyMobileLabels(row, [
+          'Cidade', 'Regional', 'População', 'Base Brisanet', 'Penetração', 'Crescimento',
+        ]);
+        return row;
+      }
+
+      function renderRegionFilter(regions) {
+        const select = document.getElementById('region-filter');
+        const selected = select.value;
+        const options = [createOption('', 'Todas as regionais')].concat(
+          regions.map((region) => createOption(region, region))
+        );
+        select.replaceChildren(...options);
+        select.value = selected;
+      }
+
+      function renderCityTable() {
+        if (!state.data) return;
+
+        const includedCities = getIncludedCities();
+        const summary = createClientSummary(includedCities);
+        const search = normalizeText(document.getElementById('search').value);
+        const region = document.getElementById('region-filter').value;
+        const status = document.getElementById('status-filter').value;
+        const rows = includedCities.filter((record) => {
+          const matchesSearch = !search || normalizeText(record.city).includes(search);
+          const matchesRegion = !region || record.regional === region;
+          const matchesStatus = !status || record.status === status;
+          return matchesSearch && matchesRegion && matchesStatus;
+        });
+
+        document.getElementById('city-head').replaceChildren(createCityHeader(state.data.period));
+        const bodyRows = rows.length
+          ? rows.map((record) => createCityRow(record, summary))
+          : [createEmptyRow(12, 'Nenhuma cidade encontrada.')];
+        document.getElementById('city-body').replaceChildren(...bodyRows);
+        const adminHint = canManageGoalValidation()
+          ? ' • Clique em uma meta para alterar a validação'
+          : '';
+        document.getElementById('city-count').textContent =
+          `${rows.length} de ${includedCities.length} cidades${adminHint}`;
+      }
+
+      function createCityHeader(period) {
+        const row = document.createElement('tr');
+        [
+          { label: 'Cidade', help: 'Cidade considerada na comparação entre os dois meses.' },
+          { label: 'Regional', help: 'Regional responsável pela cidade.' },
+          { label: 'Metas do mês', help: 'Metas mensais de Orçamento, Efetivado e Instalação da cidade.' },
+          { label: 'População', help: 'População informada para a cidade na aba Dados.' },
+          { label: period.previousLabel, help: 'Base ativa da cidade no mês usado como referência.' },
+          { label: period.currentLabel, help: 'Base ativa da cidade no mês analisado.' },
+          { label: 'Crescimento', help: 'Base do mês analisado menos a base do mês de referência. Pode ser positivo ou negativo.' },
+          { label: 'Variação (%)', help: 'Crescimento dividido pela base do mês de referência.' },
+          { label: 'Penetração', help: 'Base Brisanet do mês analisado dividida pela população da cidade.' },
+          { label: 'Representatividade no grupo', help: 'Percentual da movimentação da cidade sobre todas as altas ou todas as quedas.' },
+          { label: 'Status', help: 'Indica se a cidade cresceu, caiu ou permaneceu estável.' },
+          { label: 'Ação', help: 'Permite retirar temporariamente a cidade desta análise.' },
+        ].forEach((column, index) => appendExplainedHeader(
+          row,
+          column,
+          index >= 3 && index <= 9 ? 'number' : index === 0 ? 'sticky-city-column' : ''
+        ));
+        return row;
+      }
+
+      function createCityRow(record, summary) {
+        const row = document.createElement('tr');
+        const representation = createRepresentationMetrics(record, summary);
+        appendCityLinkCell(row, record);
+        appendCell(row, 'td', record.regional);
+        appendCityGoalsCell(row, record);
+        appendCell(row, 'td', formatNullableInteger(record.population), 'number');
+        appendCell(row, 'td', formatInteger(record.previous), 'number');
+        appendCell(row, 'td', formatInteger(record.current), 'number');
+        appendCell(row, 'td', formatSignedInteger(record.difference), `number ${toneFromNumber(record.difference)}`);
+        appendCell(row, 'td', formatPercent(record.percentage), `number ${toneFromNumber(record.percentage)}`);
+        appendCell(row, 'td', formatNullablePercent(calculatePenetration(record)), 'number');
+        appendRepresentationCell(row, representation, record);
+
+        const statusCell = appendCell(row, 'td', '');
+        const badge = document.createElement('span');
+        badge.className = `badge ${badgeClass(record.status)}`;
+        badge.textContent = record.status;
+        statusCell.appendChild(badge);
+
+        const actionCell = appendCell(row, 'td', '');
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-city-button';
+        removeButton.type = 'button';
+        removeButton.textContent = 'Remover';
+        removeButton.addEventListener('click', () => excludeCity(record.city));
+        actionCell.appendChild(removeButton);
+        applyMobileLabels(row, [
+          'Cidade', 'Regional', 'Metas do mês', 'População', state.data.period.previousLabel,
+          state.data.period.currentLabel, 'Crescimento', 'Variação (%)', 'Penetração',
+          'Representatividade no grupo', 'Status', 'Ação',
+        ]);
+        return row;
+      }
+
+      function appendCityGoalsCell(row, record) {
+        const cell = appendCell(row, 'td', '');
+        const container = document.createElement('div');
+        container.className = 'city-goals';
+        GOAL_DEFINITIONS.forEach(({ key: goalKey, label: labelText }) => {
+          const goal = record.goals && record.goals[goalKey];
+          const validated = isGoalValidated(record, goalKey);
+          const interactive = canManageGoalValidation() && hasGoalValue(goal);
+          const item = document.createElement(interactive ? 'button' : 'span');
+          item.className = `city-goal ${interactive ? 'city-goal-button' : ''} ${validated ? '' : 'city-goal-pending'}`.trim();
+          if (interactive) {
+            item.type = 'button';
+            item.title = validated ? 'Marcar como não validada' : 'Marcar como validada';
+            item.addEventListener('click', () => toggleCityGoalValidation(item, record, goalKey));
+          }
+          const label = document.createElement('span');
+          label.className = 'city-goal-label';
+          label.textContent = labelText;
+          const value = document.createElement('strong');
+          value.className = 'city-goal-value';
+          value.textContent = formatGoalValue(goal);
+          item.append(label, value);
+          if (!validated) {
+            const status = document.createElement('span');
+            status.className = 'city-goal-status';
+            status.textContent = 'Meta não validada';
+            item.appendChild(status);
+          }
+          container.appendChild(item);
+        });
+        cell.appendChild(container);
+        return cell;
+      }
+
+      function appendCityLinkCell(row, record) {
+        const cell = appendCell(row, 'td', '', 'sticky-city-column');
+        const button = document.createElement('button');
+        button.className = 'city-link';
+        button.type = 'button';
+        button.textContent = record.city;
+        button.title = `Ver histórico de ${record.city}`;
+        button.addEventListener('click', () => openCityDetail(record.city));
+        cell.appendChild(button);
+        return cell;
+      }
+
+      function openCityDetail(city) {
+        const history = state.historyByCity.get(city);
+        const record = getIncludedCities().find((item) => item.city === city);
+        if (!history || !record) return;
+
+        document.getElementById('detail-city').textContent = city;
+        document.getElementById('detail-subtitle').textContent =
+          `${record.regional} • ${state.data.period.currentLabel} x ${state.data.period.previousLabel}`;
+
+        const changes = createHistoryChanges(history.points);
+        state.activeCityChart = {
+          city,
+          record,
+          points: history.points,
+          changes,
+          growthGoals: history.growthGoals || {},
+        };
+        document.getElementById('city-chart-mode').value = state.cityChartMode;
+
+        renderCityMetrics(record, history, changes);
+        renderActiveCityChart();
+        renderHistoryTable(history.points, changes, history.growthGoals);
+        if (typeof planoRenderCityActions === 'function') planoRenderCityActions(record);
+
+        const dialog = document.getElementById('city-detail-dialog');
+        if (!dialog.open) dialog.showModal();
+      }
+
+      function closeCityDetail() {
+        const dialog = document.getElementById('city-detail-dialog');
+        if (dialog && dialog.open) dialog.close();
+        state.activeCityChart = null;
+      }
+
+      function changeCityChartMode(event) {
+        state.cityChartMode = event.target.value === 'positive-negative'
+          ? 'positive-negative'
+          : 'general';
+        renderActiveCityChart();
+      }
+
+      function renderActiveCityChart() {
+        const context = state.activeCityChart;
+        if (!context) return;
+        if (state.cityChartMode === 'positive-negative') {
+          renderPositiveNegativeChart(context.points, context.changes, context.city, {
+            growthGoals: context.growthGoals,
+          });
+          return;
+        }
+        renderEvolutionChart(context.points, context.city, context.record);
+      }
+
+      function closeDialogFromBackdrop(event) {
+        if (event.target === event.currentTarget) closeCityDetail();
+      }
+
+      function renderCityMetrics(record, history, changes) {
+        const biggestGrowth = changes
+          .filter((change) => change.difference > 0)
+          .sort((a, b) => b.difference - a.difference)[0];
+        const biggestDecline = changes
+          .filter((change) => change.difference < 0)
+          .sort((a, b) => a.difference - b.difference)[0];
+        const rank = createRankMetric(record);
+        const regional = createRegionalMetric(record);
+        const summary = createClientSummary(getIncludedCities());
+        const representation = createRepresentationMetrics(record, summary);
+        const penetration = calculatePenetration(record);
+        const baseParticipation = summary.current > 0 ? record.current / summary.current : null;
+        const declineStreak = countConsecutiveDeclines(
+          history.points,
+          state.data.period.currentKey
+        );
+
+        const metrics = [
+          {
+            label: 'Desempenho atual',
+            items: [
+              rank,
+              {
+                label: 'Variação selecionada',
+                value: `${formatSignedInteger(record.difference)} (${formatPercent(record.percentage)})`,
+                helper: `${state.data.period.previousLabel} → ${state.data.period.currentLabel}`,
+                tone: toneFromNumber(record.difference),
+              },
+              {
+                label: record.difference > 0
+                  ? 'Representatividade nas altas'
+                  : record.difference < 0 ? 'Representatividade nas quedas' : 'Representatividade no grupo',
+                value: formatPercent(representation.groupShare),
+                helper: record.difference === 0
+                  ? 'Cidade sem movimentação no período'
+                  : `${formatInteger(Math.abs(record.difference))} de ${formatInteger(representation.groupTotal)} do grupo`,
+                tone: toneFromNumber(record.difference),
+              },
+              regional,
+            ],
+          },
+          {
+            label: `Metas de ${state.data.period.currentLabel}`,
+            items: GOAL_DEFINITIONS.map((definition) =>
+              createGoalMetric(definition.detailLabel, record, definition.key)
+            ),
+          },
+          {
+            label: 'Mercado e base',
+            items: [
+              {
+                label: 'Base atual',
+                value: formatInteger(record.current),
+                helper: `${formatNullablePercent(baseParticipation)} da base analisada`,
+              },
+              {
+                label: 'População',
+                value: formatNullableInteger(record.population),
+                helper: hasValidPopulation(record) ? 'População cadastrada' : 'População não informada',
+              },
+              {
+                label: 'Penetração Brisanet',
+                value: formatNullablePercent(penetration),
+                helper: penetration === null
+                  ? 'Informe uma população maior que zero'
+                  : 'Base atual ÷ população',
+                tone: penetration === null ? '' : 'positive',
+              },
+            ],
+          },
+          {
+            label: 'Histórico',
+            items: [
+              createExtremeMetric('Maior crescimento', biggestGrowth, 'positive'),
+              createExtremeMetric('Maior queda', biggestDecline, 'negative'),
+              {
+                label: 'Meses consecutivos em queda',
+                value: formatDeclineStreak(declineStreak),
+                helper: `Até ${state.data.period.currentLabel}`,
+                tone: declineStreak > 0 ? 'negative' : '',
+              },
+            ],
+          },
+        ];
+
+        document.getElementById('detail-metrics').replaceChildren(
+          ...metrics.map(createDetailMetricCard)
+        );
+      }
+
+      function createRankMetric(record) {
+        if (record.difference === 0) {
+          return { label: 'Posição na comparação', value: 'Estável', helper: 'Sem variação no período' };
+        }
+
+        const isGrowth = record.difference > 0;
+        const rankedCities = getIncludedCities()
+          .filter((item) => isGrowth ? item.difference > 0 : item.difference < 0)
+          .sort((a, b) => isGrowth
+            ? b.difference - a.difference || a.city.localeCompare(b.city, 'pt-BR')
+            : a.difference - b.difference || a.city.localeCompare(b.city, 'pt-BR'));
+        const position = rankedCities.findIndex((item) => item.city === record.city) + 1;
+
+        return {
+          label: 'Posição na comparação',
+          value: `${position}º`,
+          helper: isGrowth ? 'Ranking de crescimentos' : 'Ranking de quedas',
+          tone: isGrowth ? 'positive' : 'negative',
+        };
+      }
+
+      function createRegionalMetric(record) {
+        const regionalCities = getIncludedCities().filter(
+          (item) => item.regional === record.regional
+        );
+        const previous = sumRecords(regionalCities, 'previous');
+        const current = sumRecords(regionalCities, 'current');
+        const regionalPercentage = previous !== 0 ? (current - previous) / previous : 0;
+        const differenceInPoints = record.percentage - regionalPercentage;
+
+        return {
+          label: 'Comparação com a regional',
+          value: formatPercentagePoints(differenceInPoints),
+          helper: `Cidade ${formatPercent(record.percentage)} • ${record.regional} ${formatPercent(regionalPercentage)}`,
+          tone: toneFromNumber(differenceInPoints),
+        };
+      }
+
+      function createExtremeMetric(label, change, tone) {
+        if (!change) {
+          return { label, value: 'Não ocorreu', helper: 'No histórico disponível' };
+        }
+
+        return {
+          label,
+          value: `${formatSignedInteger(change.difference)} (${formatPercent(change.percentage)})`,
+          helper: `${formatMonthShort(change.previousMonth)} → ${formatMonthShort(change.currentMonth)}`,
+          tone,
+        };
+      }
+
+      function createDetailMetricCard(metric) {
+        const card = document.createElement('article');
+        card.className = 'detail-card detail-card-group';
+
+        const title = document.createElement('strong');
+        title.className = 'detail-group-title';
+        title.textContent = metric.label;
+
+        const grid = document.createElement('div');
+        grid.className = 'detail-metric-grid';
+        grid.replaceChildren(...metric.items.map(createDetailMetricItem));
+        card.append(title, grid);
+        return card;
+      }
+
+      function createDetailMetricItem(metric) {
+        const item = document.createElement('div');
+        item.className = `detail-metric-item ${metric.className || ''}`.trim();
+
+        const label = document.createElement('span');
+        label.className = 'detail-card-label';
+        label.textContent = metric.label;
+
+        const value = document.createElement('strong');
+        value.className = `detail-card-value ${metric.tone || ''}`.trim();
+        value.textContent = metric.value;
+
+        const helper = document.createElement('span');
+        helper.className = 'detail-card-helper';
+        helper.textContent = metric.helper;
+
+        item.append(label, value, helper);
+        if (metric.goalKey && metric.record && canManageGoalValidation() && hasGoalValue(metric.rawValue)) {
+          const button = document.createElement('button');
+          button.className = 'goal-validation-button';
+          button.type = 'button';
+          button.textContent = metric.validated
+            ? 'Marcar não validada'
+            : 'Validar meta';
+          button.addEventListener('click', () =>
+            toggleCityGoalValidation(button, metric.record, metric.goalKey)
+          );
+          item.appendChild(button);
+        }
+        return item;
+      }
+
+      function createGoalMetric(label, record, goalKey) {
+        const value = record.goals && record.goals[goalKey];
+        const validated = isGoalValidated(record, goalKey);
+        return {
+          label,
+          value: formatGoalValue(value),
+          helper: !validated
+            ? 'Meta não validada'
+            : hasGoalValue(value) ? `Meta mensal de ${state.data.period.currentLabel}`
+            : 'Meta não informada para a cidade',
+          className: `goal-card ${validated ? '' : 'goal-card-pending'}`.trim(),
+          goalKey,
+          record,
+          rawValue: value,
+          validated,
+        };
+      }
+
+      function toggleCityGoalValidation(button, record, goalKey) {
+        if (!canManageGoalValidation() || !hasGoalValue(record.goals && record.goals[goalKey])) return;
+
+        const validated = !isGoalValidated(record, goalKey);
+        button.disabled = true;
+        google.script.run
+          .withSuccessHandler((result) => {
+            record.goalValidation = record.goalValidation || {};
+            record.goalValidation[result.goalType] = result.validated;
+            renderAnalysis();
+            if (state.activeCityChart && state.activeCityChart.city === record.city) {
+              const history = state.historyByCity.get(record.city);
+              const changes = createHistoryChanges(history.points);
+              renderCityMetrics(record, history, changes);
+            }
+          })
+          .withFailureHandler((error) => {
+            button.disabled = false;
+            showError(normalizeAppError(error));
+          })
+          .setCityGoalValidation(
+            record.city,
+            state.data.period.currentKey,
+            goalKey,
+            validated
+          );
+      }
+
+      function createHistoryChanges(points) {
+        const changes = [];
+        for (let index = 1; index < points.length; index += 1) {
+          const previous = points[index - 1];
+          const current = points[index];
+          if (!Number.isFinite(previous.value) || !Number.isFinite(current.value)) continue;
+
+          const difference = current.value - previous.value;
+          changes.push({
+            previousMonth: previous.monthKey,
+            currentMonth: current.monthKey,
+            currentLabel: current.label,
+            previousValue: previous.value,
+            currentValue: current.value,
+            difference,
+            // null (não 0) quando a base anterior é zero: a variação % não é
+            // definida nesse caso, e os consumidores já sabem exibir "—"
+            // para null. Retornar 0 faria parecer "sem mudança".
+            percentage: previous.value !== 0 ? difference / previous.value : null,
+          });
+        }
+        return changes;
+      }
+
+      function countConsecutiveDeclines(points, currentMonth) {
+        let index = points.findIndex((point) => point.monthKey === currentMonth);
+        let count = 0;
+
+        while (index > 0) {
+          const current = points[index];
+          const previous = points[index - 1];
+          if (
+            !Number.isFinite(current.value) ||
+            !Number.isFinite(previous.value) ||
+            current.value >= previous.value
+          ) break;
+
+          count += 1;
+          index -= 1;
+        }
+
+        return count;
+      }
+
+      function formatDeclineStreak(count) {
+        if (count === 0) return 'Nenhum';
+        return `${count} ${count === 1 ? 'mês' : 'meses'}`;
+      }
+
+      function chartToneColors_(tone) {
+        // Paleta compartilhada com o restante do painel (mesmos tons de
+        // --green/--red/--blue já usados em badges e nas tabelas via
+        // toneFromNumber), garantindo que o gráfico da cidade sempre concorde
+        // visualmente com o status já mostrado para ela no ranking.
+        if (tone === 'positive') {
+          return { light: '#4ac26b', mid: '#1a7f37', deep: '#116329' };
+        }
+        if (tone === 'negative') {
+          return { light: '#ff8182', mid: '#cf222e', deep: '#82071e' };
+        }
+        return { light: '#54aeff', mid: '#0969da', deep: '#8250df' };
+      }
+
+      function appendEvolutionChartGradients(svg, tone) {
+        const colors = chartToneColors_(tone);
+        const definitions = createSvgElement('defs');
+        const lineGradient = createSvgElement('linearGradient', {
+          id: 'evolution-line-gradient',
+          x1: '0%', y1: '0%', x2: '100%', y2: '0%',
+        });
+        [['0%', colors.light], ['55%', colors.mid], ['100%', colors.deep]].forEach(([offset, color]) => {
+          lineGradient.appendChild(createSvgElement('stop', { offset, 'stop-color': color }));
+        });
+        const areaGradient = createSvgElement('linearGradient', {
+          id: 'evolution-area-gradient',
+          x1: '0%', y1: '0%', x2: '0%', y2: '100%',
+        });
+        [['0%', colors.mid, 0.24], ['100%', colors.mid, 0.02]].forEach(([offset, color, opacity]) => {
+          areaGradient.appendChild(createSvgElement('stop', { offset, 'stop-color': color, 'stop-opacity': opacity }));
+        });
+        definitions.append(lineGradient, areaGradient);
+        svg.appendChild(definitions);
+        return colors.mid;
+      }
+
+      function appendMovementChartGradients(svg) {
+        const definitions = createSvgElement('defs');
+        const gradients = [
+          ['movement-positive-gradient', '#4ac26b', '#1a7f37'],
+          ['movement-negative-gradient', '#ff8182', '#cf222e'],
+        ];
+        gradients.forEach(([id, startColor, endColor]) => {
+          const gradient = createSvgElement('linearGradient', {
+            id,
+            x1: '0%', y1: '0%', x2: '0%', y2: '100%',
+          });
+          gradient.append(
+            createSvgElement('stop', { offset: '0%', 'stop-color': startColor }),
+            createSvgElement('stop', { offset: '100%', 'stop-color': endColor })
+          );
+          definitions.appendChild(gradient);
+        });
+        svg.appendChild(definitions);
+      }
+
+      function renderPositiveNegativeChart(points, changes, city, options) {
+        const settings = options || {};
+        const chart = document.getElementById(settings.chartId || 'city-chart');
+        const periodLabel = document.getElementById(settings.periodLabelId || 'chart-period');
+        const selectedYear = String(state.data.period.currentKey || '').slice(0, 4);
+        const growthGoals = settings.growthGoals || {};
+        const movements = changes
+          .filter((change) => change.difference !== null && change.difference !== 0)
+          .map((change) => {
+            const month = String(change.currentMonth || '').slice(5, 7);
+            const goal = String(change.currentMonth || '').startsWith(`${selectedYear}-`)
+              ? growthGoals[month]
+              : null;
+            return {
+              ...change,
+              growthGoal: hasGoalValue(goal) ? Number(goal) : null,
+            };
+          });
+        periodLabel.textContent = points.length
+          ? `${points[0].label} a ${points[points.length - 1].label}`
+          : '';
+
+        if (!movements.length) {
+          chart.replaceChildren(createEmptyMessage(
+            settings.emptyMessage || 'Sem crescimento positivo ou negativo no histórico disponível.'
+          ));
+          return;
+        }
+
+        const minimumWidth = settings.minimumWidth || 760;
+        const width = Math.max(minimumWidth, movements.length * 92 + 104);
+        const height = settings.height || 340;
+        const margin = { top: 52, right: 28, bottom: 52, left: 76 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const zeroY = margin.top + plotHeight / 2;
+        const chartValues = movements.flatMap((change) =>
+          [change.difference, change.growthGoal].filter(Number.isFinite).map(Math.abs)
+        );
+        const maximumMovement = niceChartMaximum(Math.max(...chartValues));
+        const xStep = plotWidth / movements.length;
+        const xForIndex = (index) => margin.left + xStep * index + xStep / 2;
+        const yForDifference = (difference) => zeroY - (
+          difference / maximumMovement
+        ) * (plotHeight / 2);
+
+        const svg = createSvgElement('svg', {
+          class: settings.svgClass || 'evolution-chart',
+          viewBox: `0 0 ${width} ${height}`,
+          role: 'img',
+          'aria-label': `Crescimentos positivos e negativos de ${city}`,
+        });
+        svg.style.minWidth = `${Math.max(620, width)}px`;
+        appendMovementChartGradients(svg);
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'chart-tooltip hidden';
+        [-1, -0.5, 0, 0.5, 1].forEach((ratio) => {
+          const y = zeroY - ratio * (plotHeight / 2);
+          svg.appendChild(createSvgElement('line', {
+            class: ratio === 0 ? 'movement-zero-line' : 'chart-grid-line',
+            x1: margin.left,
+            x2: width - margin.right,
+            y1: y,
+            y2: y,
+          }));
+          const label = createSvgElement('text', {
+            class: 'chart-axis-label',
+            x: margin.left - 10,
+            y: y + 4,
+            'text-anchor': 'end',
+          });
+          label.textContent = formatSignedInteger(maximumMovement * ratio);
+          svg.appendChild(label);
+        });
+
+        const axisTitle = createSvgElement('text', {
+          class: 'chart-axis-title',
+          x: margin.left,
+          y: 20,
+          'text-anchor': 'start',
+        });
+        axisTitle.textContent = 'Crescimento';
+        svg.appendChild(axisTitle);
+
+        appendMovementLegend(svg, width - margin.right - 390, 20, '#1a7f37', 'Crescimento positivo');
+        appendMovementLegend(svg, width - margin.right - 230, 20, '#cf222e', 'Crescimento negativo');
+        appendMovementLineLegend(svg, width - margin.right - 70, 20, 'Meta');
+
+        const goalPath = movements.map((change, index) => {
+          if (!Number.isFinite(change.growthGoal)) return '';
+          const command = index > 0 && Number.isFinite(movements[index - 1].growthGoal) ? 'L' : 'M';
+          return `${command} ${xForIndex(index)} ${yForDifference(change.growthGoal)}`;
+        }).filter(Boolean).join(' ');
+        if (goalPath) {
+          svg.appendChild(createSvgElement('path', { class: 'growth-goal-line', d: goalPath }));
+        }
+
+        const barWidth = Math.min(48, xStep * 0.52);
+        movements.forEach((change, index) => {
+          const x = xForIndex(index);
+          const valueY = yForDifference(change.difference);
+          const isPositive = change.difference > 0;
+          const barY = isPositive ? valueY : zeroY;
+          const barHeight = Math.max(Math.abs(zeroY - valueY), 2);
+          const bar = createSvgElement('rect', {
+            class: 'movement-bar',
+            x: x - barWidth / 2,
+            y: barY,
+            width: barWidth,
+            height: barHeight,
+            rx: 5,
+            fill: isPositive
+              ? 'url(#movement-positive-gradient)'
+              : 'url(#movement-negative-gradient)',
+            tabindex: 0,
+            role: 'button',
+            'aria-label': `${change.currentLabel}, crescimento ${formatSignedInteger(change.difference)}, meta ${formatGoalValue(change.growthGoal)}`,
+          });
+          const showTooltip = (event) => showMovementChartTooltip(
+            chart,
+            tooltip,
+            event.currentTarget,
+            change
+          );
+          bar.addEventListener('pointerenter', showTooltip);
+          bar.addEventListener('pointerleave', () => tooltip.classList.add('hidden'));
+          bar.addEventListener('focus', showTooltip);
+          bar.addEventListener('blur', () => tooltip.classList.add('hidden'));
+          svg.appendChild(bar);
+
+          const valueLabel = createSvgElement('text', {
+            class: 'chart-value-label',
+            x,
+            y: isPositive ? barY - 8 : barY + barHeight + 17,
+            'text-anchor': 'middle',
+          });
+          valueLabel.textContent = formatSignedInteger(change.difference);
+          svg.appendChild(valueLabel);
+
+          if (Number.isFinite(change.growthGoal)) {
+            svg.appendChild(createSvgElement('circle', {
+              class: 'growth-goal-point',
+              cx: x,
+              cy: yForDifference(change.growthGoal),
+              r: 4,
+            }));
+          }
+
+          const monthLabel = createSvgElement('text', {
+            class: 'chart-axis-label',
+            x,
+            y: height - 18,
+            'text-anchor': 'middle',
+          });
+          monthLabel.textContent = formatMonthShort(change.currentMonth);
+          svg.appendChild(monthLabel);
+        });
+
+        chart.replaceChildren(svg, tooltip);
+      }
+
+      function appendMovementLegend(svg, x, y, color, labelText) {
+        svg.appendChild(createSvgElement('circle', { cx: x, cy: y - 3, r: 4, fill: color }));
+        const label = createSvgElement('text', {
+          class: 'movement-legend-label',
+          x: x + 9,
+          y,
+          'text-anchor': 'start',
+        });
+        label.textContent = labelText;
+        svg.appendChild(label);
+      }
+
+      function appendMovementLineLegend(svg, x, y, labelText) {
+        svg.appendChild(createSvgElement('line', {
+          class: 'growth-goal-line',
+          x1: x,
+          x2: x + 22,
+          y1: y - 3,
+          y2: y - 3,
+        }));
+        const label = createSvgElement('text', {
+          class: 'movement-legend-label',
+          x: x + 29,
+          y,
+          'text-anchor': 'start',
+        });
+        label.textContent = labelText;
+        svg.appendChild(label);
+      }
+
+      function showMovementChartTooltip(chart, tooltip, target, change) {
+        const title = document.createElement('strong');
+        title.className = 'chart-tooltip-title';
+        title.textContent = change.currentLabel;
+        const rows = [
+          title,
+          createChartTooltipRow('Crescimento', formatSignedInteger(change.difference)),
+          createChartTooltipRow(
+            'Variação',
+            change.percentage === null ? '—' : formatSignedPercent(change.percentage)
+          ),
+          createChartTooltipRow('Base anterior', formatInteger(change.previousValue)),
+          createChartTooltipRow('Base atual', formatInteger(change.currentValue)),
+        ];
+        if (Number.isFinite(change.growthGoal)) {
+          rows.splice(
+            2,
+            0,
+            createChartTooltipRow('Meta', formatGoalValue(change.growthGoal)),
+            createChartTooltipRow(
+              'Desvio da meta',
+              formatNullableSignedInteger_(change.difference - change.growthGoal)
+            )
+          );
+        }
+        tooltip.replaceChildren(...rows);
+        tooltip.classList.remove('hidden');
+
+        const chartRect = chart.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const pointX = targetRect.left + targetRect.width / 2 - chartRect.left + chart.scrollLeft;
+        const placeBelow = change.difference < 0;
+        const pointY = (placeBelow ? targetRect.bottom : targetRect.top) - chartRect.top + chart.scrollTop;
+        const minimumX = chart.scrollLeft + 96;
+        const maximumX = chart.scrollLeft + chart.clientWidth - 96;
+        tooltip.style.left = `${Math.min(Math.max(pointX, minimumX), maximumX)}px`;
+        tooltip.style.top = `${pointY + (placeBelow ? 8 : -8)}px`;
+        tooltip.classList.toggle('chart-tooltip-below', placeBelow);
+      }
+
+      function renderEvolutionChart(points, city, record) {
+        const chart = document.getElementById('city-chart');
+        const indexedPoints = points
+          .map((point, index) => ({ ...point, index }))
+          .filter((point) => Number.isFinite(point.value));
+
+        if (!indexedPoints.length) {
+          chart.replaceChildren(createEmptyMessage('Sem dados históricos para esta cidade.'));
+          document.getElementById('chart-period').textContent = '';
+          return;
+        }
+
+        const tone = toneFromNumber(record ? record.difference : 0);
+        const width = 900;
+        const height = 340;
+        const margin = { top: 46, right: 28, bottom: 48, left: 76 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const values = indexedPoints.map((point) => point.value);
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const range = maximum - minimum;
+        const padding = range > 0 ? range * 0.1 : Math.max(maximum * 0.05, 1);
+        const yMinimum = minimum - padding;
+        const yMaximum = maximum + padding;
+        const xForIndex = (index) => margin.left + (
+          points.length === 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth
+        );
+        const yForValue = (value) => margin.top + (
+          (yMaximum - value) / (yMaximum - yMinimum)
+        ) * plotHeight;
+
+        const svg = createSvgElement('svg', {
+          class: 'evolution-chart',
+          viewBox: `0 0 ${width} ${height}`,
+          role: 'img',
+          'aria-label': `Evolução mensal da base de ${city}`,
+        });
+        const tooltip = document.createElement('div');
+        tooltip.className = 'chart-tooltip hidden';
+        const toneColor = appendEvolutionChartGradients(svg, tone);
+
+        const gridLines = 4;
+        for (let index = 0; index <= gridLines; index += 1) {
+          const ratio = index / gridLines;
+          const y = margin.top + ratio * plotHeight;
+          const value = yMaximum - ratio * (yMaximum - yMinimum);
+          svg.appendChild(createSvgElement('line', {
+            class: 'chart-grid-line',
+            x1: margin.left,
+            x2: width - margin.right,
+            y1: y,
+            y2: y,
+          }));
+
+          const label = createSvgElement('text', {
+            class: 'chart-axis-label',
+            x: margin.left - 10,
+            y: y + 4,
+            'text-anchor': 'end',
+          });
+          label.textContent = formatInteger(Math.round(value));
+          svg.appendChild(label);
+        }
+
+        const axisTitle = createSvgElement('text', {
+          class: 'chart-axis-title',
+          x: margin.left,
+          y: 20,
+          'text-anchor': 'start',
+        });
+        axisTitle.textContent = 'Base';
+        svg.appendChild(axisTitle);
+
+        // Com muitos meses de histórico, mostrar todo mês no eixo lotaria os
+        // rótulos; a partir de 9 pontos, mostra só ~7 rótulos espaçados
+        // (o primeiro e o último sempre aparecem).
+        const labelStep = Math.max(1, Math.ceil(points.length / 7));
+        points.forEach((point, index) => {
+          const isEdge = index === 0 || index === points.length - 1;
+          if (!isEdge && index % labelStep !== 0) return;
+          const label = createSvgElement('text', {
+            class: 'chart-axis-label',
+            x: xForIndex(index),
+            y: height - 18,
+            'text-anchor': 'middle',
+          });
+          label.textContent = formatMonthShort(point.monthKey);
+          svg.appendChild(label);
+        });
+
+        const areaPath = [
+          `M ${xForIndex(indexedPoints[0].index)} ${margin.top + plotHeight}`,
+          ...indexedPoints.map((point) => `L ${xForIndex(point.index)} ${yForValue(point.value)}`),
+          `L ${xForIndex(indexedPoints[indexedPoints.length - 1].index)} ${margin.top + plotHeight}`,
+          'Z',
+        ].join(' ');
+        svg.appendChild(createSvgElement('path', {
+          class: 'chart-area',
+          d: areaPath,
+          fill: 'url(#evolution-area-gradient)',
+        }));
+
+        const polyline = createSvgElement('polyline', {
+          class: 'chart-line',
+          stroke: 'url(#evolution-line-gradient)',
+          points: indexedPoints
+            .map((point) => `${xForIndex(point.index)},${yForValue(point.value)}`)
+            .join(' '),
+        });
+        svg.appendChild(polyline);
+
+        indexedPoints.forEach((point) => {
+          const x = xForIndex(point.index);
+          const y = yForValue(point.value);
+          const previousPoint = point.index > 0 ? points[point.index - 1] : null;
+          const circle = createSvgElement('circle', {
+            class: 'chart-point',
+            stroke: toneColor,
+            cx: x,
+            cy: y,
+            r: 5,
+          });
+          svg.appendChild(circle);
+
+          const isFirstPoint = point.index === 0;
+          const isLastPoint = point.index === points.length - 1;
+          const valueLabel = createSvgElement('text', {
+            class: 'chart-value-label',
+            x: isFirstPoint ? x + 7 : isLastPoint ? x - 7 : x,
+            y: y - 13,
+            'text-anchor': isFirstPoint ? 'start' : isLastPoint ? 'end' : 'middle',
+          });
+          valueLabel.textContent = formatInteger(point.value);
+          svg.appendChild(valueLabel);
+
+          const hitArea = createSvgElement('circle', {
+            class: 'chart-hit-area',
+            cx: x,
+            cy: y,
+            r: 16,
+            tabindex: 0,
+            role: 'button',
+            'aria-label': `${point.label}, base ${formatInteger(point.value)}`,
+          });
+          const showTooltip = (event) => showChartTooltip(
+            chart,
+            tooltip,
+            event.currentTarget,
+            circle,
+            point,
+            previousPoint,
+            toneColor
+          );
+          const hideTooltip = () => hideChartTooltip(tooltip, circle);
+          hitArea.addEventListener('pointerenter', showTooltip);
+          hitArea.addEventListener('pointerleave', hideTooltip);
+          hitArea.addEventListener('focus', showTooltip);
+          hitArea.addEventListener('blur', hideTooltip);
+          svg.appendChild(hitArea);
+        });
+
+        chart.replaceChildren(svg, tooltip);
+        document.getElementById('chart-period').textContent =
+          `${points[0].label} a ${points[points.length - 1].label}`;
+      }
+
+      function showChartTooltip(chart, tooltip, target, circle, point, previousPoint, toneColor) {
+        const hasPrevious = previousPoint && Number.isFinite(previousPoint.value);
+        const difference = hasPrevious ? point.value - previousPoint.value : null;
+        const percentage = hasPrevious && previousPoint.value !== 0
+          ? difference / previousPoint.value
+          : null;
+
+        const title = document.createElement('strong');
+        title.className = 'chart-tooltip-title';
+        title.textContent = point.label;
+
+        const rows = [createChartTooltipRow('Base', formatInteger(point.value))];
+        if (difference !== null) {
+          rows.push(createChartTooltipRow('Crescimento mensal', formatSignedInteger(difference)));
+          rows.push(createChartTooltipRow('Variação', percentage === null ? '—' : formatSignedPercent(percentage)));
+        } else {
+          rows.push(createChartTooltipRow('Variação', 'Primeiro mês'));
+        }
+
+        tooltip.replaceChildren(title, ...rows);
+        tooltip.classList.remove('hidden');
+        circle.classList.add('chart-point-active');
+        circle.setAttribute('fill', toneColor);
+
+        const chartRect = chart.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const pointX = targetRect.left + targetRect.width / 2 - chartRect.left + chart.scrollLeft;
+        const pointY = targetRect.top + targetRect.height / 2 - chartRect.top + chart.scrollTop;
+        const minimumX = chart.scrollLeft + 96;
+        const maximumX = chart.scrollLeft + chart.clientWidth - 96;
+        const tooltipX = Math.min(Math.max(pointX, minimumX), maximumX);
+        const placeBelow = pointY - chart.scrollTop < 105;
+
+        tooltip.style.left = `${tooltipX}px`;
+        tooltip.style.top = `${pointY + (placeBelow ? 18 : -18)}px`;
+        tooltip.classList.toggle('chart-tooltip-below', placeBelow);
+      }
+
+      function hideChartTooltip(tooltip, circle) {
+        tooltip.classList.add('hidden');
+        tooltip.classList.remove('chart-tooltip-below');
+        circle.classList.remove('chart-point-active');
+        circle.removeAttribute('fill');
+      }
+
+      function createChartTooltipRow(label, value) {
+        const row = document.createElement('span');
+        row.className = 'chart-tooltip-row';
+
+        const rowLabel = document.createElement('span');
+        rowLabel.textContent = label;
+
+        const rowValue = document.createElement('span');
+        rowValue.className = 'chart-tooltip-value';
+        rowValue.textContent = value;
+
+        row.append(rowLabel, rowValue);
+        return row;
+      }
+
+      function renderHistoryTable(points, changes, growthGoals) {
+        const changesByMonth = new Map(
+          changes.map((change) => [change.currentMonth, change])
+        );
+        const rows = points.map((point, index) => {
+          const row = document.createElement('tr');
+          const hasValue = Number.isFinite(point.value);
+          const change = index > 0 ? changesByMonth.get(point.monthKey) : null;
+          const difference = change ? change.difference : null;
+          const percentage = change ? change.percentage : null;
+          const selectedYear = String(state.data.period.currentKey || '').slice(0, 4);
+          const growthGoal = point.monthKey.startsWith(`${selectedYear}-`) && growthGoals
+            ? growthGoals[point.monthKey.slice(5, 7)]
+            : null;
+          const goalDifference = difference !== null && hasGoalValue(growthGoal)
+            ? difference - Number(growthGoal)
+            : null;
+
+          appendCell(row, 'td', point.label);
+          appendCell(row, 'td', hasValue ? formatInteger(point.value) : 'Sem dado', 'number');
+          appendCell(
+            row,
+            'td',
+            difference === null ? '—' : formatSignedInteger(difference),
+            difference === null ? 'number' : `number ${toneFromNumber(difference)}`
+          );
+          appendCell(row, 'td', formatGoalValue(growthGoal), 'number');
+          appendCell(
+            row,
+            'td',
+            formatNullableSignedInteger_(goalDifference),
+            goalDifference === null
+              ? 'number'
+              : `number ${toneFromNumber(goalDifference)}`
+          );
+          appendCell(
+            row,
+            'td',
+            percentage === null ? '—' : formatPercent(percentage),
+            percentage === null ? 'number' : `number ${toneFromNumber(percentage)}`
+          );
+          applyMobileLabels(row, [
+            'Mês', 'Base', 'Crescimento', 'Meta de crescimento', 'Desvio da meta', 'Variação (%)',
+          ]);
+          return row;
+        });
+
+        document.getElementById('detail-history-body').replaceChildren(...rows);
+      }
+
+      function createSvgElement(tagName, attributes) {
+        const element = document.createElementNS('http://www.w3.org/2000/svg', tagName);
+        Object.entries(attributes || {}).forEach(([name, value]) => {
+          element.setAttribute(name, String(value));
+        });
+        return element;
+      }
+
+      function createEmptyMessage(message) {
+        const element = document.createElement('p');
+        element.className = 'empty-row';
+        element.textContent = message;
+        return element;
+      }
+
+      function formatMonthShort(monthKey) {
+        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const [year, month] = String(monthKey).split('-').map(Number);
+        return `${months[month - 1]}/${String(year).slice(-2)}`;
+      }
+
+      function formatNullableSignedInteger_(value) {
+        return Number.isFinite(value) ? formatSignedInteger(value) : 'Não disponível';
+      }
+
+      function formatPercentagePoints(value) {
+        const number = Number(value) || 0;
+        const formatted = new Intl.NumberFormat('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(Math.abs(number * 100));
+        return `${number > 0 ? '+' : number < 0 ? '-' : ''}${formatted} p.p.`;
+      }
+
+      function excludeCity(city) {
+        state.excludedCities.add(city);
+        saveExcludedCities();
+        renderAnalysis();
+      }
+
+      function restoreCity(city) {
+        state.excludedCities.delete(city);
+        saveExcludedCities();
+        renderAnalysis();
+      }
+
+      function restoreAllCities() {
+        state.excludedCities.clear();
+        saveExcludedCities();
+        renderAnalysis();
+      }
+
+      function renderExcludedCities() {
+        const cities = Array.from(state.excludedCities).sort((a, b) =>
+          a.localeCompare(b, 'pt-BR')
+        );
+        const panel = document.getElementById('excluded-panel');
+        panel.classList.toggle('hidden', cities.length === 0);
+        document.getElementById('excluded-count').textContent = cities.length;
+
+        const chips = cities.map((city) => {
+          const button = document.createElement('button');
+          button.className = 'excluded-chip';
+          button.type = 'button';
+          button.textContent = `${city} ×`;
+          button.title = `Restaurar ${city}`;
+          button.addEventListener('click', () => restoreCity(city));
+          return button;
+        });
+        document.getElementById('excluded-list').replaceChildren(...chips);
+      }
+
+      function createEmptyRow(columnCount, message) {
+        const row = document.createElement('tr');
+        row.className = 'mobile-empty-row';
+        const cell = appendCell(row, 'td', message, 'empty-row');
+        cell.colSpan = columnCount;
+        return row;
+      }
+
+      function applyMobileLabels(row, labels) {
+        Array.from(row.cells).forEach((cell, index) => {
+          cell.dataset.label = labels[index] || '';
+        });
+        return row;
+      }
+
+      function appendCell(row, tagName, value, className) {
+        const cell = document.createElement(tagName);
+        cell.textContent = value;
+        if (className) cell.className = className;
+        row.appendChild(cell);
+        return cell;
+      }
+
+      function createOption(value, label) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        return option;
+      }
+
+      function setLoading(isLoading) {
+        const refreshButton = document.getElementById('refresh-button');
+        const downloadButton = document.getElementById('download-dashboard-button');
+        refreshButton.disabled = isLoading;
+        refreshButton.textContent = isLoading ? 'Atualizando...' : 'Atualizar dados';
+        refreshButton.setAttribute('aria-busy', String(isLoading));
+        downloadButton.disabled = isLoading;
+        document.getElementById('compare-button').disabled = isLoading;
+        document.getElementById('swap-periods').disabled = isLoading;
+        document.getElementById('loading').classList.toggle('hidden', !isLoading);
+        if (isLoading) document.getElementById('error').classList.add('hidden');
+        const plansActive = window.__activeAppView === 'plans';
+        document.getElementById('dashboard').classList.toggle('hidden', isLoading || !state.data || plansActive);
+      }
+
+      function showError(message) {
+        const error = document.getElementById('error');
+        error.textContent = message;
+        error.classList.remove('hidden');
+      }
+
+      function formatInteger(value) {
+        return integerFormatter.format(value || 0);
+      }
+
+      function formatNullableInteger(value) {
+        return Number.isFinite(Number(value)) && Number(value) > 0
+          ? integerFormatter.format(Number(value))
+          : 'Não informada';
+      }
+
+      function formatGoalValue(value) {
+        return hasGoalValue(value) ? integerFormatter.format(Number(value)) : 'Não informada';
+      }
+
+      function formatSignedInteger(value) {
+        const number = Number(value) || 0;
+        return `${number > 0 ? '+' : ''}${integerFormatter.format(number)}`;
+      }
+
+      function formatPercent(value) {
+        return percentFormatter.format(Number(value) || 0);
+      }
+
+      function formatNullablePercent(value) {
+        return Number.isFinite(Number(value)) && value !== null
+          ? percentFormatter.format(Number(value))
+          : 'Não disponível';
+      }
+
+      function formatSignedPercent(value) {
+        const number = Number(value) || 0;
+        return `${number > 0 ? '+' : ''}${percentFormatter.format(number)}`;
+      }
+
+      function toneFromNumber(value) {
+        const number = Number(value) || 0;
+        return number > 0 ? 'positive' : number < 0 ? 'negative' : 'neutral';
+      }
+
+      function badgeClass(status) {
+        if (status === 'Crescimento') return 'badge-growth';
+        if (status === 'Queda') return 'badge-decline';
+        return 'badge-stable';
+      }
+
+      function normalizeText(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toUpperCase();
+      }
+
+      function loadExcludedCities() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(EXCLUDED_CITIES_STORAGE_KEY) || '[]');
+          return new Set(Array.isArray(saved) ? saved.filter((city) => typeof city === 'string') : []);
+        } catch (error) {
+          return new Set();
+        }
+      }
+
+      function saveExcludedCities() {
+        try {
+          localStorage.setItem(
+            EXCLUDED_CITIES_STORAGE_KEY,
+            JSON.stringify(Array.from(state.excludedCities))
+          );
+        } catch (error) {
+          // A exclusão continua válida durante a sessão quando o armazenamento está indisponível.
+        }
+      }
+    </script>
+    <?!= include_('PlanoAcaoClient'); ?>
+  </body>
+</html>

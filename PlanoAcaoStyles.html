@@ -1,0 +1,1100 @@
+<style>
+  .app-nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .app-nav-inner {
+    display: flex;
+    width: min(1240px, calc(100% - 32px));
+    margin: 0 auto;
+    gap: 6px;
+    padding: 9px 0;
+  }
+
+  .nav-button {
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 600;
+    padding: 8px 12px;
+  }
+
+  .nav-button:hover { background: #f6f8fa; color: var(--text); }
+  .nav-button-active { background: #ddf4ff; color: var(--blue); }
+
+  .plans-page { padding-top: 24px; }
+
+  .plans-heading,
+  .plans-toolbar,
+  .dialog-actions,
+  .city-plan-actions,
+  .plan-detail-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .plans-heading { margin-bottom: 18px; }
+  .plans-heading h2 { margin: 0 0 4px; font-size: 24px; }
+  .plans-heading p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .plans-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .plans-attention {
+    margin-bottom: 18px;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 16px;
+  }
+
+  .plans-attention-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .plans-attention-header h3 { margin: 0 0 3px; font-size: 16px; }
+  .plans-attention-header p { margin: 0; color: var(--muted); font-size: 12px; }
+
+  .plans-attention-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+  }
+
+  .plans-attention-options {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .attention-option {
+    display: grid;
+    min-width: 0;
+    min-height: 96px;
+    align-content: center;
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 8px;
+    background: #f6f8fa;
+    color: var(--text);
+    cursor: pointer;
+    padding: 11px 12px;
+    text-align: left;
+  }
+
+  .attention-option:hover { background: #eef2f6; }
+  .attention-option:focus-visible { outline: 3px solid rgba(9, 105, 218, 0.25); outline-offset: 2px; }
+  .attention-option-danger { border-left-color: var(--red); }
+  .attention-option-warning { border-left-color: var(--yellow); }
+  .attention-option-neutral { border-left-color: var(--blue); }
+  .attention-option-active { border-color: var(--blue); background: #ddf4ff; box-shadow: 0 0 0 1px var(--blue); }
+  .attention-option-count { font-size: 22px; line-height: 1.1; }
+  .attention-option-label { font-size: 13px; font-weight: 700; }
+  .attention-option-help { color: var(--muted); font-size: 11px; line-height: 1.35; }
+
+  .plans-toolbar {
+    align-items: stretch;
+    justify-content: flex-start;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+  }
+
+  .plans-toolbar .control { min-width: 150px; }
+  .plans-toolbar .plan-search { flex: 1; min-width: 220px; }
+
+  .plan-progress {
+    display: grid;
+    grid-template-columns: minmax(70px, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 130px;
+  }
+
+  .plan-progress-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #d8dee4;
+  }
+
+  .plan-progress-bar { height: 100%; border-radius: inherit; background: var(--blue); }
+  .plan-progress-value { color: var(--muted); font-size: 12px; }
+
+  .plan-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+  }
+
+  .plan-status-nao-iniciado { background: #eaeef2; color: #57606a; }
+  .plan-status-em-andamento { background: #ddf4ff; color: #0969da; }
+  .plan-status-pendente { background: var(--yellow-bg); color: var(--yellow); }
+  .plan-status-concluido { background: var(--green-bg); color: var(--green); }
+  .plan-status-cancelado { background: var(--red-bg); color: var(--red); }
+  .plan-priority-critica { color: var(--red); font-weight: 700; }
+  .plan-priority-alta { color: #bc4c00; font-weight: 700; }
+  .plan-overdue { color: var(--red); font-weight: 700; }
+
+  .plan-effectiveness-tone-improved { color: var(--green); }
+  .plan-effectiveness-tone-worsened { color: var(--red); }
+  .plan-effectiveness-tone-stable,
+  .plan-effectiveness-tone-unavailable { color: var(--muted); }
+
+  .plan-cycle-row td {
+    border-top: 2px solid #b6e3ff;
+    background: #f6fbff;
+    padding: 0;
+  }
+
+  .plan-cycle-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 14px;
+  }
+
+  .plan-cycle-identity { display: grid; min-width: 180px; gap: 2px; }
+  .plan-cycle-title { overflow-wrap: anywhere; font-size: 13px; }
+  .plan-cycle-meta { color: var(--muted); font-size: 11px; }
+  .plan-cycle-metrics { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+  .plan-cycle-chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+  .plan-cycle-chip-danger { border-color: #ffb8b8; background: var(--red-bg); color: var(--red); }
+  .plan-row-city { display: block; font-weight: 600; }
+  .plan-row-period { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+
+  .plans-banner {
+    margin-bottom: 18px;
+    border: 1px solid #f0c36d;
+    border-radius: 8px;
+    background: var(--yellow-bg);
+    color: var(--text);
+    padding: 14px 16px;
+  }
+
+  .plans-banner strong { display: block; margin-bottom: 4px; }
+
+  .city-plan-actions {
+    justify-content: flex-start;
+    border: 1px solid #b6e3ff;
+    border-radius: 8px;
+    background: #ddf4ff;
+    padding: 12px 14px;
+  }
+
+  .city-plan-summary { flex: 1; }
+  .city-plan-summary strong { display: block; }
+  .city-plan-summary span { color: var(--muted); font-size: 12px; }
+
+  .secondary-button,
+  .danger-button {
+    min-height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+    font-weight: 600;
+    padding: 7px 12px;
+  }
+
+  .secondary-button { color: var(--blue); }
+  .secondary-button:hover { background: #f6f8fa; }
+  .danger-button { border-color: #ff8182; color: var(--red); }
+  .danger-button:hover { background: var(--red-bg); }
+
+  .plan-dialog {
+    width: min(760px, calc(100% - 32px));
+    max-height: 92vh;
+    margin: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 16px 48px rgba(31, 35, 40, 0.24);
+    padding: 0;
+  }
+
+  .plan-dialog-wide { width: min(920px, calc(100% - 32px)); }
+  .plan-dialog::backdrop { background: rgba(15, 27, 50, 0.56); }
+  .plan-dialog-body {
+    max-width: 100%;
+    max-height: calc(92vh - 75px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 20px 22px 24px;
+  }
+
+  .plan-dialog-body > *,
+  .plan-detail-grid > *,
+  .plan-detail-block,
+  .plan-timeline-item,
+  .plan-evidence-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .plan-dialog .detail-title,
+  .plan-dialog .detail-subtitle,
+  .plan-dialog .detail-card-value,
+  .plan-detail-block h3,
+  .plan-detail-block p,
+  .plan-detail-block a,
+  .plan-timeline-item strong,
+  .plan-timeline-item p,
+  .plan-timeline-meta {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .plan-dialog input,
+  .plan-dialog select,
+  .plan-dialog textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .plan-dialog textarea {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  #plan-detail-dialog[aria-busy="true"] .detail-header {
+    position: relative;
+    overflow: hidden;
+  }
+
+  #plan-detail-dialog[aria-busy="true"] .detail-header::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--blue), transparent);
+    content: '';
+    animation: plan-loading-bar 1.1s ease-in-out infinite;
+    transform: translateX(-100%);
+  }
+
+  .plan-detail-loading,
+  .plan-detail-error {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    min-height: 130px;
+    align-content: center;
+    text-align: center;
+  }
+
+  .plan-loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #d8dee4;
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: plan-spinner 0.75s linear infinite;
+  }
+
+  .plan-detail-skeleton {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .plan-skeleton-line {
+    height: 62px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f6f8fa 25%, #eaeef2 50%, #f6f8fa 75%);
+    background-size: 200% 100%;
+    animation: plan-skeleton 1.2s ease-in-out infinite;
+  }
+
+  .plan-detail-error .primary-button { margin-top: 6px; }
+
+  @keyframes plan-spinner {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes plan-loading-bar {
+    to { transform: translateX(100%); }
+  }
+
+  @keyframes plan-skeleton {
+    to { background-position: -200% 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #plan-detail-dialog[aria-busy="true"] .detail-header::after,
+    .plan-loading-spinner,
+    .plan-skeleton-line { animation: none; }
+  }
+
+  .plan-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .plan-field { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .plan-field-full { grid-column: 1 / -1; }
+  .plan-field textarea { min-height: 88px; resize: vertical; }
+  .plan-field .control { color: var(--text); font-weight: 400; }
+  .plan-field-help { color: var(--muted); font-size: 11px; font-weight: 400; }
+  .dialog-actions { justify-content: flex-end; margin-top: 18px; }
+
+  .plan-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .plan-detail-block {
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .plan-detail-block h3 { margin: 0 0 8px; font-size: 14px; }
+  .plan-detail-block p { margin: 0; white-space: pre-wrap; }
+  .plan-detail-block a { display: block; max-width: 100%; white-space: normal; }
+  .plan-detail-actions { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 18px; }
+
+  .plan-effectiveness-block {
+    margin-bottom: 14px;
+    border: 1px solid #b6e3ff;
+    border-radius: 8px;
+    background: #f6fbff;
+    padding: 14px;
+  }
+
+  .plan-effectiveness-header { margin-bottom: 12px; }
+  .plan-effectiveness-header h3 { margin: 0 0 4px; font-size: 14px; }
+  .plan-effectiveness-header p { margin: 0; line-height: 1.4; }
+
+  .plan-effectiveness-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .plan-effectiveness-card {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    padding: 10px;
+  }
+
+  .plan-effectiveness-label,
+  .plan-effectiveness-help { color: var(--muted); font-size: 11px; }
+  .plan-effectiveness-value { overflow-wrap: anywhere; font-size: 16px; }
+
+  .plan-cycle-notice {
+    margin: 10px 0 0;
+    border: 1px solid #b6e3ff;
+    border-radius: 7px;
+    background: #ddf4ff;
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 10px 12px;
+  }
+
+  .alert-preview-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .alert-preview-header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+  .alert-preview-countdown {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .alert-preview-countdown-active { color: var(--yellow); font-weight: 600; }
+
+  .alert-preview-result {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--green-bg);
+  }
+  .alert-preview-result.negative { background: var(--red-bg); }
+
+  .alert-preview-note {
+    display: grid;
+    gap: 3px;
+    margin-bottom: 14px;
+    border: 1px solid #b6e3ff;
+    border-radius: 8px;
+    background: #ddf4ff;
+    padding: 12px 14px;
+  }
+
+  .alert-preview-list { display: grid; gap: 10px; }
+
+  .alert-preview-item {
+    display: grid;
+    min-width: 0;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .alert-preview-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .alert-preview-item p { margin: 0; overflow-wrap: anywhere; }
+  .alert-preview-item .meta { display: block; overflow-wrap: anywhere; }
+  .alert-preview-empty { margin: 0; color: var(--muted); text-align: center; padding: 28px 12px; }
+  .alert-type-prazo-proximo,
+  .alert-type-sem-atualizacao { background: var(--yellow-bg); color: var(--yellow); }
+  .alert-type-atrasado,
+  .alert-type-base-piorou { background: var(--red-bg); color: var(--red); }
+
+  .plan-timeline { display: grid; gap: 10px; }
+  .plan-timeline-item { border-left: 3px solid #b6e3ff; padding: 4px 0 4px 12px; }
+  .plan-timeline-item strong { display: block; font-size: 13px; }
+  .plan-timeline-item p { margin: 5px 0; white-space: pre-wrap; }
+  .plan-timeline-meta { color: var(--muted); font-size: 11px; }
+
+  .plan-timeline-links-wrapper {
+    display: grid;
+    gap: 5px;
+    margin: 8px 0;
+  }
+
+  .plan-timeline-links-label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .plan-link-list,
+  .plan-timeline-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .plan-link {
+    display: inline-flex !important;
+    max-width: 100%;
+    border: 1px solid #b6e3ff;
+    border-radius: 999px;
+    background: #ddf4ff;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    padding: 5px 9px;
+    text-decoration: none;
+    word-break: break-word;
+  }
+
+  .plan-link:hover { text-decoration: underline; }
+
+  .plan-evidence-gallery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .plan-evidence-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #f6f8fa;
+  }
+
+  .plan-evidence-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: #eaeef2;
+  }
+
+  .plan-evidence-image:focus-visible {
+    outline: 3px solid rgba(9, 105, 218, 0.35);
+    outline-offset: -3px;
+  }
+
+  .plan-image-dialog {
+    width: min(1100px, calc(100% - 32px));
+    max-height: 94vh;
+    margin: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 16px 48px rgba(31, 35, 40, 0.28);
+    padding: 0;
+  }
+
+  .plan-image-dialog::backdrop { background: rgba(15, 27, 50, 0.72); }
+
+  .plan-image-viewer {
+    display: grid;
+    min-height: 240px;
+    max-height: calc(94vh - 76px);
+    place-items: center;
+    overflow: auto;
+    background: #0f1b32;
+    padding: 16px;
+  }
+
+  .plan-image-viewer img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(94vh - 108px);
+    object-fit: contain;
+  }
+
+  .plan-evidence-loading {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .plan-evidence-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .plan-evidence-name {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plans-table th,
+  .plans-table td {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .plan-evidence-remove {
+    border: 0;
+    background: transparent;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+  }
+
+  .card-helper {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .access-state {
+    width: min(1240px, calc(100% - 32px));
+    margin: 28px auto 0;
+  }
+
+  .access-state-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    border: 1px solid #ff8182;
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+
+  .access-state-icon {
+    display: grid;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--red-bg);
+    color: var(--red);
+    font-weight: 800;
+  }
+
+  .access-state-loading .access-state-card { border-color: #80ccff; }
+  .access-state-loading .access-state-icon {
+    background: #ddf4ff;
+    color: var(--blue);
+  }
+  .access-state-loading .access-state-card h2 { color: var(--text); }
+  .access-state-loading .access-state-help { display: none; }
+
+  .access-state-card h2 {
+    margin: 1px 0 5px;
+    color: var(--red);
+    font-size: 17px;
+  }
+
+  .access-state-card p {
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .access-state-help {
+    margin-top: 5px !important;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .representation-note {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin: -6px 0 20px;
+    border: 1px solid #b6e3ff;
+    border-radius: 8px;
+    background: #ddf4ff;
+    padding: 13px 16px;
+  }
+
+  .representation-note > div { display: grid; gap: 3px; }
+  .representation-note span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .movement-equation {
+    flex: 0 0 auto;
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--navy);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .plans-toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 20;
+    max-width: 380px;
+    border-radius: 8px;
+    background: var(--navy);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(31, 35, 40, 0.28);
+    padding: 12px 14px;
+  }
+
+  @media (max-width: 800px) {
+    .plans-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plans-attention-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plans-toolbar { flex-wrap: wrap; }
+    .plan-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plan-effectiveness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .alert-preview-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plan-evidence-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 620px) {
+    .plans-heading, .city-plan-actions { align-items: flex-start; flex-direction: column; }
+    .plans-attention-header { align-items: stretch; flex-direction: column; }
+    .plans-attention-actions { flex-direction: column; }
+    .plans-attention-actions .secondary-button { width: 100%; }
+    .plans-summary, .plan-form-grid, .plan-detail-grid { grid-template-columns: 1fr; }
+    .plans-attention-options, .plan-effectiveness-grid { grid-template-columns: 1fr; }
+    .alert-preview-summary { grid-template-columns: 1fr; }
+    .plan-field-full { grid-column: auto; }
+    .plan-evidence-gallery { grid-template-columns: 1fr; }
+    .plan-dialog { width: calc(100% - 16px); max-height: 96vh; }
+    .plan-dialog-body { max-height: calc(96vh - 70px); padding: 16px; }
+    .plan-detail-skeleton { grid-template-columns: 1fr; }
+  }
+
+  /* Responsividade global: dashboard e planos de ação. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { min-width: 320px; overflow-x: hidden; }
+  button, select, input, textarea { touch-action: manipulation; }
+
+  @media (pointer: coarse) {
+    button,
+    .control,
+    .refresh-button,
+    .secondary-button,
+    .danger-button { min-height: 44px; }
+  }
+
+  @media (max-width: 700px) {
+    .header { padding: 16px 0; }
+    .header-inner,
+    .container,
+    .app-nav-inner { width: calc(100% - 24px); }
+
+    .header-inner {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    h1 { font-size: 24px; line-height: 1.2; }
+    .subtitle { font-size: 13px; line-height: 1.45; }
+    .refresh-button { width: 100%; min-height: 44px; }
+
+    .app-nav {
+      position: sticky;
+      z-index: 10;
+      top: 0;
+      box-shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
+    }
+
+    .app-nav-inner { gap: 4px; padding: 7px 0; }
+    .nav-button { flex: 1; min-height: 42px; padding: 8px; white-space: nowrap; }
+    .container { padding: 14px 0 30px; }
+    .access-state { width: calc(100% - 24px); margin-top: 16px; }
+    .access-state-card { padding: 15px; }
+    .plans-page { padding-top: 16px; }
+
+    .status-panel,
+    .error-panel { padding: 14px; }
+
+    .period-picker {
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+      padding: 12px;
+    }
+
+    .period-field { grid-column: 1 / -1; }
+    .control { min-height: 44px; font-size: 16px; }
+    #swap-periods { grid-column: 1; width: 44px; min-height: 44px; }
+    #compare-button { grid-column: 2; min-height: 44px; width: 100%; }
+
+    .excluded-panel { margin-bottom: 14px; padding: 12px; }
+    .excluded-header { align-items: stretch; flex-direction: column; }
+    .restore-button { width: 100%; min-height: 42px; }
+    .excluded-list { gap: 6px; margin-top: 10px; }
+    .excluded-chip { min-height: 38px; }
+
+    .summary-grid,
+    .plans-summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .card { padding: 12px; }
+    .card-label { font-size: 11px; line-height: 1.35; }
+    .card-value { margin-top: 4px; font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; }
+    .card-helper { font-size: 10px; }
+    .representation-note {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 10px;
+      margin: 0 0 14px;
+      padding: 12px;
+    }
+    .movement-equation { text-align: center; white-space: normal; }
+    .rankings-grid { grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
+
+    .section-header,
+    .detail-section-header {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+      padding: 13px 12px;
+    }
+
+    .section-header h2 { font-size: 17px; }
+    .filters { grid-template-columns: 1fr; gap: 8px; padding: 12px; }
+    .table-wrap { overflow: visible; }
+
+    .responsive-table {
+      display: block;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    .responsive-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .responsive-table tbody,
+    .responsive-table tfoot {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .responsive-table tr {
+      display: block;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .responsive-table tbody tr:hover { background: var(--surface); }
+
+    .responsive-table td {
+      display: grid;
+      grid-template-columns: minmax(96px, 42%) minmax(0, 58%);
+      align-items: start;
+      gap: 10px;
+      width: 100%;
+      border-bottom: 1px solid #eaeef2;
+      padding: 9px 11px;
+      text-align: right;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .responsive-table td:last-child { border-bottom: 0; }
+    .responsive-table td::before {
+      color: var(--muted);
+      content: attr(data-label);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.35;
+      text-align: left;
+    }
+
+    .responsive-table td.number { text-align: right; }
+    .responsive-table td .city-link,
+    .responsive-table td .badge,
+    .responsive-table td .plan-badge,
+    .responsive-table td .plan-progress { justify-self: end; text-align: right; }
+    .responsive-table td .remove-city-button { justify-self: end; min-height: 36px; }
+
+    .responsive-table .mobile-empty-row td {
+      display: block;
+      padding: 22px 14px;
+      text-align: center;
+    }
+    .responsive-table .mobile-empty-row td::before { content: none; }
+
+    .responsive-table .plan-cycle-row {
+      overflow: visible;
+      border-color: #b6e3ff;
+      box-shadow: none;
+    }
+
+    .responsive-table .plan-cycle-row td {
+      display: block;
+      border: 0;
+      padding: 0;
+      text-align: left;
+    }
+
+    .responsive-table .plan-cycle-row td::before { content: none; }
+    .plan-cycle-summary { align-items: flex-start; flex-direction: column; }
+    .plan-cycle-identity, .plan-cycle-metrics { width: 100%; }
+    .plan-cycle-metrics { justify-content: flex-start; }
+
+    .responsive-table tfoot { padding-top: 0; }
+    .responsive-table tfoot tr { border-color: #b6e3ff; background: #f6f8fa; }
+    .responsive-table tfoot td { background: transparent; }
+
+    .city-dialog,
+    .plan-dialog,
+    .plan-dialog-wide,
+    .plan-image-dialog {
+      inset: 0;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      max-width: none;
+      max-height: none;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .city-dialog[open],
+    .plan-dialog[open],
+    .plan-image-dialog[open] {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .plan-image-viewer {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      padding: 10px;
+    }
+
+    .plan-image-viewer img { max-height: 100%; }
+
+    .detail-header {
+      position: sticky;
+      z-index: 3;
+      top: 0;
+      align-items: center;
+      background: var(--surface);
+      padding: calc(14px + env(safe-area-inset-top)) 12px 14px;
+    }
+
+    .detail-title { font-size: 19px; overflow-wrap: anywhere; }
+    .detail-subtitle { line-height: 1.4; }
+    .close-button { flex: 0 0 40px; width: 40px; height: 40px; }
+
+    .detail-body,
+    .plan-dialog-body {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      padding: 14px 12px calc(22px + env(safe-area-inset-bottom));
+    }
+
+    .detail-body {
+      display: block;
+      overflow-y: auto;
+    }
+
+    .detail-body > * + * { margin-top: 14px; }
+
+    .detail-grid,
+    .plan-detail-grid { grid-template-columns: 1fr; gap: 8px; }
+    .detail-card { padding: 11px; }
+    .detail-card-value { font-size: 17px; }
+    .city-plan-actions { align-items: stretch; flex-direction: column; padding: 12px; }
+    .city-plan-actions button { width: 100%; }
+
+    .chart-container {
+      min-height: 280px;
+      padding: 10px 8px;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+    }
+    .evolution-chart { min-width: 700px; }
+    .chart-value-label { font-size: 10px; }
+    .chart-tooltip { min-width: 155px; }
+
+    .plans-heading { align-items: stretch; flex-direction: column; margin-bottom: 14px; }
+    .plans-heading h2 { font-size: 21px; }
+    #new-plan-button { width: 100%; min-height: 44px; }
+    .plans-banner { margin-bottom: 14px; padding: 12px; }
+
+    .plans-toolbar {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 12px;
+    }
+    .plans-toolbar .control,
+    .plans-toolbar .plan-search { min-width: 0; }
+
+    .plan-form-grid { grid-template-columns: 1fr; gap: 12px; }
+    .plan-field-full { grid-column: auto; }
+    .plan-field textarea { min-height: 104px; }
+
+    .dialog-actions {
+      position: sticky;
+      z-index: 2;
+      bottom: calc(-1 * (22px + env(safe-area-inset-bottom)));
+      margin: 18px -12px calc(-1 * (22px + env(safe-area-inset-bottom)));
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    }
+    .dialog-actions button { flex: 1; min-width: 0; min-height: 44px; }
+
+    .plan-detail-actions { align-items: stretch; flex-direction: column; }
+    .plan-detail-actions button { width: 100%; }
+    .plan-detail-block { padding: 12px; }
+    .plan-timeline-item { padding-left: 10px; }
+    .plan-evidence-gallery { grid-template-columns: 1fr; }
+    .plans-toast {
+      right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      left: 12px;
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 370px) {
+    .summary-grid,
+    .plans-summary { grid-template-columns: 1fr; }
+    .responsive-table td { grid-template-columns: minmax(88px, 40%) minmax(0, 60%); }
+    .app-nav-inner { width: calc(100% - 16px); }
+    .nav-button { font-size: 13px; }
+  }
+
+  @media (min-width: 480px) and (max-width: 700px) {
+    .detail-grid,
+    .plan-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plan-evidence-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (min-width: 701px) and (max-width: 1024px) {
+    .header-inner,
+    .container,
+    .app-nav-inner { width: min(960px, calc(100% - 32px)); }
+    .plans-toolbar { flex-wrap: wrap; }
+    .plans-toolbar .plan-search { flex-basis: 100%; }
+    .city-dialog { width: min(940px, calc(100% - 24px)); }
+    .plan-dialog { width: min(760px, calc(100% - 24px)); }
+    .plan-dialog-wide { width: min(940px, calc(100% - 24px)); }
+  }
+
+  @media (min-width: 1440px) {
+    .header-inner,
+    .container,
+    .app-nav-inner { width: min(1360px, calc(100% - 48px)); }
+  }
+</style>

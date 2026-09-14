@@ -1,0 +1,179 @@
+<nav id="app-nav" class="app-nav hidden" aria-label="Navegação principal">
+  <div class="app-nav-inner">
+    <button id="nav-dashboard" class="nav-button nav-button-active" type="button">Dashboard</button>
+    <button id="nav-plans" class="nav-button" type="button">Planos de ação</button>
+  </div>
+</nav>
+
+<section id="access-state" class="access-state hidden" role="alert" aria-live="assertive">
+  <div class="access-state-card">
+    <span id="access-state-icon" class="access-state-icon" aria-hidden="true">!</span>
+    <div>
+      <h2 id="access-state-title">Acesso indisponível</h2>
+      <p id="access-state-message"></p>
+      <p class="access-state-help">Revise a aba Usuarios_Permissoes e clique em Atualizar dados.</p>
+    </div>
+  </div>
+</section>
+
+<main id="plans-view" class="container plans-page hidden">
+  <div class="plans-heading">
+    <div>
+      <h2>Planos de ação</h2>
+      <p id="plans-user-label">Carregando permissões...</p>
+    </div>
+    <button id="new-plan-button" class="primary-button hidden" type="button">Novo plano</button>
+  </div>
+
+  <div id="plans-unavailable" class="plans-banner hidden" role="alert"></div>
+  <section id="plans-summary" class="plans-summary" aria-label="Resumo dos planos"></section>
+
+  <section id="plans-attention" class="plans-attention hidden" aria-labelledby="plans-attention-title">
+    <div class="plans-attention-header">
+      <div>
+        <h3 id="plans-attention-title">Precisa de atenção</h3>
+        <p>Atrasos, pendências e planos sem atualização recente.</p>
+      </div>
+      <div class="plans-attention-actions">
+        <button id="preview-alerts-button" class="secondary-button hidden" type="button">Testar alertas</button>
+        <button id="clear-attention-filter" class="secondary-button" type="button">Ver todos os planos</button>
+      </div>
+    </div>
+    <div id="plans-attention-options" class="plans-attention-options"></div>
+  </section>
+
+  <section id="plans-content" class="section hidden">
+    <div class="plans-toolbar">
+      <input id="plan-search" class="control plan-search" type="search" placeholder="Buscar cidade, ação ou responsável...">
+      <select id="plan-status-filter" class="control" aria-label="Filtrar planos por status"></select>
+      <select id="plan-region-filter" class="control" aria-label="Filtrar planos por regional"></select>
+      <select id="plan-priority-filter" class="control" aria-label="Filtrar planos por prioridade"></select>
+    </div>
+    <div class="table-wrap">
+      <table class="responsive-table plans-table">
+        <thead>
+          <tr>
+            <th>Cidade</th>
+            <th>Ação</th>
+            <th>Responsável</th>
+            <th>Prioridade</th>
+            <th>Status</th>
+            <th>Progresso</th>
+            <th>Prazo</th>
+            <th>Atualizado</th>
+          </tr>
+        </thead>
+        <tbody id="plans-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<dialog id="plan-form-dialog" class="plan-dialog">
+  <header class="detail-header">
+    <div>
+      <h2 id="plan-form-title" class="detail-title">Novo plano de ação</h2>
+      <p class="detail-subtitle">Os dados serão gravados nas abas próprias do Google Sheets.</p>
+    </div>
+    <button class="close-button" data-close-dialog="plan-form-dialog" type="button" aria-label="Fechar">×</button>
+  </header>
+  <form id="plan-form" class="plan-dialog-body">
+    <div class="plan-form-grid">
+      <label class="plan-field">Cidade<select id="plan-city" name="cidade" class="control" required></select></label>
+      <label class="plan-field">Regional<input id="plan-regional" name="regional" class="control" readonly></label>
+      <label class="plan-field">Produto<input name="produto" class="control" value="FTTH" maxlength="80"></label>
+      <label class="plan-field">Prioridade<select id="plan-priority" name="prioridade" class="control" required></select></label>
+      <label class="plan-field plan-field-full">O que será feito?<textarea name="o_que" class="control" maxlength="2000" required></textarea></label>
+      <label class="plan-field plan-field-full">Como será executado?<textarea name="como" class="control" maxlength="5000" required></textarea></label>
+      <label class="plan-field">Responsável<input name="responsavel" class="control" maxlength="150" required></label>
+      <label class="plan-field">E-mail do responsável<input id="plan-responsible-email" name="responsavel_email" class="control" type="email" list="plan-responsible-options" autocomplete="email" maxlength="254" required></label>
+      <datalist id="plan-responsible-options"></datalist>
+      <label class="plan-field">Prazo<input name="prazo" class="control" type="date"></label>
+      <label class="plan-field">Status<select id="plan-status" name="status" class="control" required></select></label>
+      <label class="plan-field">Conclusão (%)<input name="percentual_conclusao" class="control" type="number" min="0" max="100" value="0" required></label>
+      <label class="plan-field plan-field-full">Motivo da pendência<textarea name="pendencia_motivo" class="control" maxlength="2000"></textarea></label>
+      <label class="plan-field plan-field-full">Próximo passo<textarea name="proximo_passo" class="control" maxlength="2000"></textarea></label>
+      <label class="plan-field plan-field-full">Links de evidências (um por linha)<textarea name="links_evidencias" class="control" maxlength="42000"></textarea></label>
+      <label class="plan-field plan-field-full">
+        Imagens de evidência
+        <input name="imagens" class="control" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+        <span class="plan-field-help">Até 3 por envio e 4 MB cada. Limite do plano: 20 imagens ou 40 MB.</span>
+      </label>
+    </div>
+    <div class="dialog-actions">
+      <button class="secondary-button" data-close-dialog="plan-form-dialog" type="button">Cancelar</button>
+      <button id="save-plan-button" class="primary-button" type="submit">Salvar plano</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="plan-detail-dialog" class="plan-dialog plan-dialog-wide">
+  <header class="detail-header">
+    <div>
+      <h2 id="plan-detail-title" class="detail-title">Plano de ação</h2>
+      <p id="plan-detail-subtitle" class="detail-subtitle"></p>
+    </div>
+    <button class="close-button" data-close-dialog="plan-detail-dialog" type="button" aria-label="Fechar">×</button>
+  </header>
+  <div id="plan-detail-body" class="plan-dialog-body"></div>
+</dialog>
+
+<dialog id="plan-update-dialog" class="plan-dialog">
+  <header class="detail-header">
+    <div>
+      <h2 class="detail-title">Registrar andamento</h2>
+      <p class="detail-subtitle">A atualização ficará registrada na linha do tempo.</p>
+    </div>
+    <button class="close-button" data-close-dialog="plan-update-dialog" type="button" aria-label="Fechar">×</button>
+  </header>
+  <form id="plan-update-form" class="plan-dialog-body">
+    <div class="plan-form-grid">
+      <label class="plan-field plan-field-full">Resumo da atualização<textarea name="resumo" class="control" maxlength="2000" required></textarea></label>
+      <label class="plan-field">Status<select id="plan-update-status" name="status" class="control" required></select></label>
+      <label class="plan-field">Conclusão (%)<input name="percentual_conclusao" class="control" type="number" min="0" max="100" required></label>
+      <label class="plan-field plan-field-full">Motivo da pendência<textarea name="pendencia_motivo" class="control" maxlength="2000"></textarea></label>
+      <label class="plan-field plan-field-full">Próximo passo<textarea name="proximo_passo" class="control" maxlength="2000"></textarea></label>
+      <label class="plan-field">Novo prazo<input name="novo_prazo" class="control" type="date"></label>
+      <label class="plan-field plan-field-full">Links (um por linha)<textarea name="links" class="control" maxlength="42000"></textarea></label>
+      <label class="plan-field plan-field-full">
+        Imagens de evidência
+        <input name="imagens" class="control" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+        <span class="plan-field-help">Até 3 por envio e 4 MB cada. Limite do plano: 20 imagens ou 40 MB.</span>
+      </label>
+    </div>
+    <div class="dialog-actions">
+      <button class="secondary-button" data-close-dialog="plan-update-dialog" type="button">Cancelar</button>
+      <button id="save-plan-update-button" class="primary-button" type="submit">Registrar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="plan-image-dialog" class="plan-image-dialog">
+  <header class="detail-header">
+    <div>
+      <h2 id="plan-image-title" class="detail-title">Evidência</h2>
+      <p class="detail-subtitle">Visualização da imagem anexada ao plano.</p>
+    </div>
+    <button class="close-button" data-close-dialog="plan-image-dialog" type="button" aria-label="Fechar">×</button>
+  </header>
+  <div class="plan-image-viewer">
+    <img id="plan-image-preview" alt="">
+  </div>
+</dialog>
+
+<dialog id="alert-preview-dialog" class="plan-dialog plan-dialog-wide">
+  <header class="detail-header">
+    <div>
+      <h2 class="detail-title">Teste dos alertas</h2>
+      <p class="detail-subtitle">Veja quais alertas seriam enviados no próximo ciclo.</p>
+      <p id="alert-preview-countdown" class="alert-preview-countdown hidden"></p>
+    </div>
+    <div class="alert-preview-header-actions">
+      <button id="send-alerts-now-button" class="primary-button hidden" type="button">Enviar agora</button>
+      <button class="close-button" data-close-dialog="alert-preview-dialog" type="button" aria-label="Fechar">×</button>
+    </div>
+  </header>
+  <div id="alert-preview-body" class="plan-dialog-body"></div>
+</dialog>
+
+<div id="plans-toast" class="plans-toast hidden" role="status" aria-live="polite"></div>
