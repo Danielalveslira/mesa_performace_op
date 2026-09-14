@@ -112,6 +112,10 @@
         box-shadow: none;
       }
 
+      .dashboard-export-mode .city-analysis-table thead th {
+        position: static;
+      }
+
       .container { padding: 24px 0 40px; }
 
       .period-picker {
@@ -619,6 +623,20 @@
       }
 
       tbody tr:hover .sticky-city-column { background: #f6f8fa; }
+
+      /* Cabeçalho fixo ao rolar a tabela "Análise por cidade" — table-wrap só
+         rola na horizontal, então o cabeçalho gruda no topo da própria
+         página ao rolar verticalmente. z-index 3 no canto (nome da cidade)
+         porque essa célula já é fixa na horizontal (.sticky-city-column,
+         z-index 2) e precisa ficar acima das duas rolagens ao mesmo tempo. */
+      .city-analysis-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+      .city-analysis-table thead th.sticky-city-column {
+        z-index: 3;
+      }
 
       table {
         width: 100%;
