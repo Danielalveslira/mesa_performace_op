@@ -628,7 +628,16 @@
          rola na horizontal, então o cabeçalho gruda no topo da própria
          página ao rolar verticalmente. z-index 3 no canto (nome da cidade)
          porque essa célula já é fixa na horizontal (.sticky-city-column,
-         z-index 2) e precisa ficar acima das duas rolagens ao mesmo tempo. */
+         z-index 2) e precisa ficar acima das duas rolagens ao mesmo tempo.
+         border-collapse: collapse (usado em "table" acima) quebra
+         position: sticky nas células em praticamente todo navegador — por
+         isso essa tabela específica muda para separate/spacing 0, que
+         mantém o mesmo visual (bordas de 1px em cada célula) mas permite o
+         cabeçalho grudar. */
+      .city-analysis-table {
+        border-collapse: separate;
+        border-spacing: 0;
+      }
       .city-analysis-table thead th {
         position: sticky;
         top: 0;
