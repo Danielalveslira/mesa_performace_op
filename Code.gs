@@ -2,8 +2,10 @@ const CONFIG = Object.freeze({
   SOURCE_SHEET: 'vw_indicadores_cidades',
   REGION_SHEET: 'Dados',
   GOALS_SHEET: 'Base_METAS_importada',
-  GOAL_VALIDATION_SHEET: 'Metas_Validacao',
-  CACHE_KEY: 'dashboard-data-v8',
+  // v9: removida a validação de metas (goalValidation saiu do payload por
+  // cidade) — versão trocada para não servir um payload em cache com o
+  // formato antigo enquanto o TTL de 300s do cache anterior não expira.
+  CACHE_KEY: 'dashboard-data-v9',
   CACHE_REVISION_PROPERTY: 'DASHBOARD_CACHE_REVISION',
   CACHE_SECONDS: 300,
 });
@@ -68,20 +70,15 @@ function getRawDashboardData_(forceRefresh, selectedCurrentMonth, selectedPrevio
   const sourceSheet = getRequiredSheet_(spreadsheet, CONFIG.SOURCE_SHEET);
   const regionSheet = getRequiredSheet_(spreadsheet, CONFIG.REGION_SHEET);
   const goalsSheet = getRequiredSheet_(spreadsheet, CONFIG.GOALS_SHEET);
-  const goalValidationSheet = spreadsheet.getSheetByName(CONFIG.GOAL_VALIDATION_SHEET);
   const timezone = normalizeTimeZone_(spreadsheet.getSpreadsheetTimeZone());
 
   const sourceValues = sourceSheet.getDataRange().getValues();
   const regionValues = regionSheet.getDataRange().getValues();
   const goalValues = goalsSheet.getDataRange().getValues();
-  const goalValidationValues = goalValidationSheet
-    ? goalValidationSheet.getDataRange().getValues()
-    : [];
   const dashboard = buildDashboardData_(
     sourceValues,
     regionValues,
     goalValues,
-    goalValidationValues,
     timezone,
     currentMonth,
     previousMonth
@@ -153,7 +150,6 @@ function buildDashboardData_(
   sourceValues,
   regionValues,
   goalValues,
-  goalValidationValues,
   timezone,
   selectedCurrentMonth,
   selectedPreviousMonth
@@ -214,7 +210,6 @@ function buildDashboardData_(
 
   const goalsByCity = createCityGoalsMap_(goalValues, currentMonth);
   const growthGoalsByCity = createCityGrowthGoalSeriesMap_(goalValues);
-  const goalValidationByCity = createCityGoalValidationMap_(goalValidationValues, currentMonth);
 
   const previousValues = valuesByMonth.get(previousMonth);
   const currentValues = valuesByMonth.get(currentMonth);
@@ -231,14 +226,12 @@ function buildDashboardData_(
     const difference = current.value - previous.value;
     const metadata = cityMetadata.get(city) || {};
     const goals = goalsByCity.get(city) || createEmptyCityGoals_();
-    const goalValidation = goalValidationByCity.get(city) || createDefaultGoalValidation_();
 
     return {
       city,
       regional: metadata.regional || 'Não informada',
       population: metadata.population || null,
       goals,
-      goalValidation,
       previous: previous.value,
       current: current.value,
       difference,
@@ -393,144 +386,6 @@ function findGoalMonthHeaderIndex_(headers, selectedMonth, optional) {
 
 function createEmptyCityGoals_() {
   return { budget: null, effective: null, installation: null, growth: null };
-}
-
-function createCityGoalValidationMap_(values, selectedMonth) {
-  const validationByCity = new Map();
-  if (!values || values.length < 2) return validationByCity;
-
-  const headers = createHeaderMap_(values[0]);
-  const cityIndex = getHeaderIndex_(headers, 'cidade');
-  const monthIndex = getHeaderIndex_(headers, 'mes');
-  const goalTypeIndex = getHeaderIndex_(headers, 'tipo_meta');
-  const statusIndex = getHeaderIndex_(headers, 'status');
-
-  values.slice(1).forEach((row) => {
-    const city = normalizeCity_(row[cityIndex]);
-    const month = normalizeMonthKey_(row[monthIndex]);
-    const goalKey = normalizeGoalKey_(row[goalTypeIndex]);
-    if (!city || month !== selectedMonth || !goalKey) return;
-
-    const validation = validationByCity.get(city) || createDefaultGoalValidation_();
-    validation[goalKey] = normalizeHeader_(row[statusIndex]) !== 'em_validacao';
-    validationByCity.set(city, validation);
-  });
-
-  return validationByCity;
-}
-
-function createDefaultGoalValidation_() {
-  return { budget: true, effective: true, installation: true, growth: true };
-}
-
-function setCityGoalValidation(city, month, goalType, validated) {
-  return planoRunPublic_('setCityGoalValidation', () => {
-    const user = getAppUser_();
-    if (user.role !== 'administrador') {
-      throw new PlanoUserError('Somente administradores podem alterar a validação das metas.');
-    }
-
-    const normalizedCity = normalizeCity_(city);
-    const normalizedMonth = normalizeMonthKey_(month);
-    const normalizedGoalType = normalizeGoalKey_(goalType);
-    if (!normalizedCity) throw new PlanoUserError('Cidade inválida.');
-    if (!normalizedMonth) throw new PlanoUserError('Mês inválido.');
-    if (!normalizedGoalType) throw new PlanoUserError('Tipo de meta inválido.');
-    if (typeof validated !== 'boolean') throw new PlanoUserError('Status de validação inválido.');
-
-    const spreadsheet = getSpreadsheet_();
-    const goalsSheet = getRequiredSheet_(spreadsheet, CONFIG.GOALS_SHEET);
-    const goals = createCityGoalsMap_(goalsSheet.getDataRange().getValues(), normalizedMonth)
-      .get(normalizedCity);
-    if (!goals || goals[normalizedGoalType] === null) {
-      throw new PlanoUserError('Meta não encontrada para a cidade e o mês selecionados.');
-    }
-
-    // Domínio próprio ('plano-metas'): Metas_Validacao não é tocada por
-    // nenhuma operação de plano de ação, então não faz sentido competir
-    // pelo mesmo lock que serializa criação/edição de planos.
-    const lock = requirePlanoNamedLock_('plano-metas', 30000);
-    try {
-      upsertCityGoalValidation_(
-        spreadsheet,
-        normalizedCity,
-        normalizedMonth,
-        normalizedGoalType,
-        validated,
-        user.email
-      );
-      SpreadsheetApp.flush();
-      invalidateDashboardCache_();
-    } finally {
-      lock.release();
-    }
-
-    return {
-      city: normalizedCity,
-      month: normalizedMonth,
-      goalType: normalizedGoalType,
-      validated,
-    };
-  });
-}
-
-function upsertCityGoalValidation_(spreadsheet, city, month, goalType, validated, userEmail) {
-  const headers = ['cidade', 'mes', 'tipo_meta', 'status', 'atualizado_por', 'atualizado_em'];
-  let sheet = spreadsheet.getSheetByName(CONFIG.GOAL_VALIDATION_SHEET);
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(CONFIG.GOAL_VALIDATION_SHEET);
-    sheet.getRange(1, 1, 1, headers.length)
-      .setValues([headers])
-      .setBackground('#0f1b32')
-      .setFontColor('#ffffff')
-      .setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-
-  const lastColumn = sheet.getLastColumn();
-  const lastRow = sheet.getLastRow();
-  const headerMap = createHeaderMap_(sheet.getRange(1, 1, 1, lastColumn).getValues()[0]);
-  headers.forEach((header) => getHeaderIndex_(headerMap, header));
-  const cityIndex = getHeaderIndex_(headerMap, 'cidade');
-  const monthIndex = getHeaderIndex_(headerMap, 'mes');
-  const goalTypeIndex = getHeaderIndex_(headerMap, 'tipo_meta');
-
-  // Restringe a busca por TextFinder na coluna cidade (em vez de ler e
-  // varrer a planilha inteira com getDataRange) e só então confere mês e
-  // tipo de meta nas poucas linhas candidatas.
-  let targetRow = null;
-  if (lastRow > 1) {
-    const matches = sheet.getRange(2, cityIndex + 1, lastRow - 1, 1)
-      .createTextFinder(city)
-      .matchEntireCell(true)
-      .findAll();
-    for (let index = 0; index < matches.length; index += 1) {
-      const rowNumber = matches[index].getRow();
-      const rowValues = sheet.getRange(rowNumber, 1, 1, lastColumn).getValues()[0];
-      if (
-        normalizeMonthKey_(rowValues[monthIndex]) === month
-        && normalizeGoalKey_(rowValues[goalTypeIndex]) === goalType
-      ) {
-        targetRow = rowNumber;
-        break;
-      }
-    }
-  }
-
-  const record = [
-    city,
-    month,
-    goalType,
-    validated ? 'VALIDADA' : 'EM_VALIDACAO',
-    userEmail,
-    new Date(),
-  ];
-
-  if (targetRow) {
-    sheet.getRange(targetRow, 1, 1, record.length).setValues([record]);
-  } else {
-    sheet.appendRow(record);
-  }
 }
 
 function normalizeGoalKey_(value) {

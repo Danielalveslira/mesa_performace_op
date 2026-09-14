@@ -30,18 +30,17 @@ function planoRunPublic_(label, fn) {
 /**
  * LockService só oferece um mutex por escopo fixo (script/usuário/documento):
  * não existe um "getScriptLock('minha-chave')". Antes desta mudança, TODA
- * mutação do sistema — criação/edição de plano, upload de evidência,
- * validação de meta (domínio totalmente independente, outra planilha) e
+ * mutação do sistema — criação/edição de plano, upload de evidência e
  * envio de alertas — disputava o mesmo LockService.getScriptLock() global,
- * então validar uma meta bloqueava (e era bloqueado por) qualquer edição de
- * plano em uma regional completamente diferente.
+ * então processar alertas bloqueava (e era bloqueado por) qualquer edição
+ * de plano em uma regional completamente diferente.
  *
  * Isto implementa um mutex nomeado sobre o próprio script lock: o script
  * lock é seguro (fornece exclusão mútua atômica de verdade) e é mantido
  * apenas pelo tempo mínimo de checar/gravar uma chave no CacheService — não
  * pelo tempo da operação inteira. O trabalho real acontece com o script
  * lock já liberado, então operações em domínios diferentes (ex.: 'plano-
- * crud' vs. 'plano-metas' vs. 'plano-alertas') deixam de se bloquear mutuamente.
+ * crud' vs. 'plano-alertas') deixam de se bloquear mutuamente.
  *
  * Dentro de um mesmo domínio o comportamento de serialização é idêntico ao
  * lock global anterior — nenhuma das travas de segurança já existentes
